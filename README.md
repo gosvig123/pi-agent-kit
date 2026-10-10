@@ -14,7 +14,7 @@ cd pi-agent-kit
 
 The installer:
 
-1. Runs `pi install` for this kit and each companion package (see [Packages](#packages)).
+1. Runs `pi install` for this kit and each companion package (see [Packages](#packages)). Team-only packages install only when your git login can read them; otherwise the installer prints `skipped`. If a package is already loaded from a local clone with the same repository name (for example `~/.pi/agent/local/pi-desk`), the installer keeps the clone and does not install a second copy.
 2. Copies `AGENTS.md`, the subagent timeout config, and `config/mcp-adapter.json` into `~/.pi/agent`. It never overwrites a file that exists; it prints the path so you can merge by hand.
 3. Adds the keys in `config/settings.defaults.json` to `~/.pi/agent/settings.json` only when they are not set.
 
@@ -106,6 +106,7 @@ The cmux and nvim extensions do nothing outside cmux or without nvim.
 | pi-tutor | `/tutor`: hint-first coding tutor that remembers topics |
 | [pi-desk](https://github.com/gosvig123/pi-desk) | `/desk`: conversations, tasks, Tick results |
 | [pi-tick](https://github.com/gosvig123/pi-tick/tree/pi-agent-kit) | Scheduled agent jobs (fork branch `pi-agent-kit`) |
+| aidlc (team only) | AI-DLC lifecycle skills: Intent, Plan, Build, Verify, Learn. Needs read access to `remotely-works/aidlc` |
 
 Remove any package with `pi remove <source>`.
 
@@ -129,6 +130,12 @@ customCommands:
     output: terminal
     description: "Commit with a pi-written message"
 ```
+
+## One setup for everyone
+
+`install.sh` is the single package list. To add or remove a package, change the `PACKAGES` or `TEAM_PACKAGES` list, run `./install.sh` (or `pi remove <source>`), then commit and push. Everyone who runs `./install.sh` again gets the same setup.
+
+Keep personal values out of this repository: provider and model choice, credentials, and private MCP servers belong in your own `~/.pi/agent/settings.json` and `~/.pi/agent/mcp-adapter.json`.
 
 ## Notes
 

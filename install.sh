@@ -34,7 +34,38 @@ command -v pi >/dev/null || fail "pi is not on PATH" "install Pi first, then run
 command -v node >/dev/null || fail "node is not on PATH" "install Node.js 24.21 or newer"
 mkdir -p "$AGENT_DIR"
 
+# Team-only packages: installed when your git login can read the repository, skipped otherwise.
+TEAM_PACKAGES=(
+  "git:github.com/remotely-works/aidlc"           # AI-DLC lifecycle skills (Remotely org members)
+)
+for source in "${TEAM_PACKAGES[@]}"; do
+  if GIT_TERMINAL_PROMPT=0 git ls-remote -q "https://${source#git:}" HEAD >/dev/null 2>&1; then
+    PACKAGES+=("$source")
+  else
+    echo "==> skipped $source (no access with your git login)"
+  fi
+done
+
+# Prints "local" when settings.json already loads a local clone of this git repository.
+# Maintainers keep editable clones (for example ~/.pi/agent/local/pi-desk); installing the git copy too would load it twice.
+loaded_locally() {
+  node - "$AGENT_DIR/settings.json" "$1" <<'EOF'
+const fs = require("node:fs");
+const path = require("node:path");
+const [settingsPath, source] = process.argv.slice(2);
+if (!fs.existsSync(settingsPath)) process.exit(0);
+const repo = source.replace(/@[^/]*$/, "").split("/").pop();
+const packages = JSON.parse(fs.readFileSync(settingsPath, "utf8")).packages ?? [];
+const local = packages.map((p) => (typeof p === "string" ? p : p.source)).filter((p) => /^(\/|\.|~)/.test(p));
+if (local.some((p) => path.basename(p) === repo)) console.log("local");
+EOF
+}
+
 for source in "${PACKAGES[@]}"; do
+  if [[ "$source" != npm:* && "$(loaded_locally "$source")" == local ]]; then
+    echo "==> kept local clone for $source"
+    continue
+  fi
   echo "==> pi install $source"
   pi install "$source" || fail "pi install $source failed" "fix the error above, then run ./install.sh again"
 done
