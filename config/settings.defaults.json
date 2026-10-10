@@ -1,0 +1,7 @@
+{
+  "enableSkillCommands": true,
+  "extensions": ["-builtin:mcp"],
+  "smartFetchDefaultMaxChars": 12000,
+  "smartFetchDefaultBatchConcurrency": 4,
+  "smartFetchDefaultRemoveImages": true
+}

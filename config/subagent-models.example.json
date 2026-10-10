@@ -1,0 +1,15 @@
+{
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-6.1-sol",
+    "defaultThinking": "medium",
+    "agentOverrides": {
+      "delegate": { "model": "openai-codex/gpt-6.1-sol", "thinking": "medium" },
+      "evidence-auditor": { "model": "openai-codex/gpt-6.1-sol", "thinking": "low" },
+      "oracle": { "model": "openai-codex/gpt-6-astra", "thinking": "high" },
+      "researcher": { "model": "openai-codex/gpt-6.1-sol", "thinking": "medium" },
+      "reviewer": { "model": "openai-codex/gpt-6.1-sol", "thinking": "high" },
+      "scout": { "model": "openai-codex/gpt-6.1-sol", "thinking": "high" },
+      "worker": { "model": "openai-codex/gpt-6.1-sol", "thinking": "medium" }
+    }
+  }
+}

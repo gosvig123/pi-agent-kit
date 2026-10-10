@@ -1,0 +1,34 @@
+{
+  "providers": {
+    "opencode-go": {
+      "baseUrl": "https://opencode.ai/zen/go/v1",
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash",
+          "api": "openai-completions",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 1000000,
+          "maxTokens": 384000,
+          "cost": { "input": 0.15, "output": 0.6, "cacheRead": 0.003, "cacheWrite": 0 },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "max": "max"
+          },
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "maxTokensField": "max_tokens",
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+          }
+        }
+      ],
+      "apiKey": "!node -e \"const fs = require('node:fs'); const os = require('node:os'); const auth = JSON.parse(fs.readFileSync(os.homedir() + '/.local/share/opencode/auth.json', 'utf8')); const key = auth['opencode-go']?.key; if (!key) throw new Error('OpenCode Go key missing; connect OpenCode Go in OpenCode'); process.stdout.write(key);\""
+    }
+  }
+}

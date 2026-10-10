@@ -1,0 +1,33 @@
+#!/bin/sh
+# Commit the staged changes with a message that Sonnet writes from the staged diff (through pi).
+# The message opens in $EDITOR first: save to commit, or clear it to abort.
+# lazygit runs this on `c` in the files panel (see lazygit config.yml customCommands).
+set -u
+
+if git diff --cached --quiet; then
+  echo "pi-commit: no staged changes. Stage files first (space in lazygit)."
+  exit 1
+fi
+
+bridge="$HOME/.pi/agent/npm/node_modules/pi-claude-bridge"
+model="${PI_COMMIT_MODEL:-claude-bridge/claude-sonnet-5-5:off}"
+prompt='Write a git commit message for the staged changes on stdin.
+Match the style of the recent commit subjects shown. Format: one subject line (imperative, max 72 chars),
+then a blank line and a short body only when the why is not obvious from the subject.
+Output only the message: no quotes, no code fences, no preamble.'
+
+echo "pi-commit: writing a commit message with $model ..."
+msg=$(
+  {
+    echo "## Recent commit subjects"; git log -8 --format=%s 2>/dev/null
+    echo; echo "## Staged files"; git diff --cached --stat
+    # Cap the diff so a large change does not blow up the prompt.
+    echo; echo "## Staged diff"; git diff --cached | head -c 120000
+  } | pi -p --no-session -nt -ns -nc -ne -e "$bridge" --model "$model" "$prompt" 2>/dev/null
+)
+
+if [ -z "$msg" ]; then
+  echo "pi-commit: pi returned no message (check: pi --list-models sonnet). Opening an empty commit message."
+  exec git commit
+fi
+exec git commit -e -m "$msg"
