@@ -14,7 +14,6 @@
 For completed fixes or changes:
 - Start with the result and confirmed cause. State when the cause is unknown.
 - Show what changed. Include exact paths or commands when useful.
-- State what was verified and the observed result. Separate untested behavior.
 - Give the next action only when needed.
 - For non-trivial work, end with three short bullets:
   - Hardest decision: the key judgment and its basis.
