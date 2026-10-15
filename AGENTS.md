@@ -8,6 +8,7 @@
 - When the next step is clear and in scope, do it. Do not stop at a plan or ask again for permission already given. Continue until done, blocked, or a stop event in Larger Work.
 - When confidence is low, gather more information. If still low, ask the user.
 - Make errors actionable: operation, target, cause, and recovery step.
+- context-mode blocks `curl`/`wget` in the `bash` tool unless the call is silent and writes to a file (`curl -s -o /tmp/x.json URL`). Run HTTP calls that pipe or print output (`curl … | python3`, health checks, API reads) in `ctx_execute` with `language: shell`.
 
 ## Completion Reports
 

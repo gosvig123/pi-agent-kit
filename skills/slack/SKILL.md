@@ -7,7 +7,7 @@ description: Read Slack through hosted Codex tools and route Slack writes to con
 
 ## Reads
 
-- Use the installed Pi `codex-exec` subagent for Slack reads. Load the `pi-subagents` skill, enable subagent tools, and confirm that `codex-exec` and its external runner are available.
+- Use the installed Pi `codex-exec` subagent for Slack reads. Launch it with `async: true`. It is an external CLI runner that runs only in the background, so `async: false` fails. Wait for its completion message; do not poll. If the launch fails, report the error instead of retrying in sync mode.
 - Discover the hosted `mcp__codex_apps__slack_slack_*` tools inside Codex. Do not use direct Slack MCP or assume tool schemas from memory.
 - Verify the workspace with `list_workspaces`. Resolve the requested channel or DM with `list_user_conversations` and the workspace `team_id`; verify the conversation type and identity before reading.
 - Use `read_channel` for channel or existing DM history, `read_thread` for replies, and `search_public` or `search_public_and_private` for search. These are tool-name suffixes; discover the full names and schemas first.
