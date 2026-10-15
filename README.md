@@ -120,6 +120,8 @@ Remove any package with `pi remove <source>`.
 
 **cmux.** In cmux, run `cmux hooks pi install` to add cmux's own Pi session bridge.
 
+**Updates.** `bin/pi-up` updates Pi and every package, then starts Pi once in print mode to prove all extensions load. It handles both installs: Pi in a private npm prefix (it relinks `pi` when another package ships an old `pi` bin) and a global npm install. `pi-up --host <ssh-host>` does the same on another machine; the host needs only Pi. Put it on PATH (`ln -s "$PWD/bin/pi-up" ~/.local/bin/pi-up`), and schedule it with pi-tick if you want weekly updates. Exit code 1 means a machine failed; the output names the extension or login that broke.
+
 **AI commit messages in lazygit.** `bin/pi-commit` writes a commit message for the staged diff through pi-claude-bridge, then opens it in `$EDITOR`. Add to lazygit's `config.yml`:
 
 ```yaml
