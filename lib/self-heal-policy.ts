@@ -67,6 +67,8 @@ export function noticeKey(failure: Failure): string {
 
 export function needsRecovery(failure: Failure): boolean {
   if (!failure.toolName) return true;
+  // A tool's own correction error already says what to fix; an extra turn only adds noise.
+  if (failure.kind === "correction") return false;
   return failure.kind !== "unknown" && failure.action !== "stop";
 }
 
