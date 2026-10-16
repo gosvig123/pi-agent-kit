@@ -18,6 +18,7 @@ PACKAGES=(
   "npm:pi-excalidraw"                              # Excalidraw canvas for visual-explanations
   "npm:pi-claude-bridge"                           # Claude subscription provider
   "npm:pi-lazygit"                                 # lazygit inside Pi
+  "npm:pi-cmux"                                    # cmux chats, splits, tools, browser, worktree handoffs
   "npm:pi-tutor"                                   # tutor mode
   "https://github.com/carderne/pi-nvim"            # nvim integration
   "git:github.com/gosvig123/pi-desk"               # /desk: conversations, tasks, Tick results

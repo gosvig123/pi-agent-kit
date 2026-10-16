@@ -103,6 +103,7 @@ The cmux and nvim extensions do nothing outside cmux or without nvim.
 | pi-excalidraw | Excalidraw canvas tools |
 | pi-claude-bridge | Use a Claude subscription as a Pi provider |
 | pi-lazygit, pi-nvim | lazygit and nvim inside Pi |
+| pi-cmux | In cmux: new Pi chats (`/cmn`), splits (`/cmv`, `/cmh`), tool tabs (`/cmo`, `/cmt`), browser split with notes (`/cmb`), worktree handoffs (`/cmcv -c`), sidebar progress. The agent can do the same on request |
 | pi-tutor | `/tutor`: hint-first coding tutor that remembers topics |
 | [pi-desk](https://github.com/gosvig123/pi-desk) | `/desk`: conversations, tasks, Tick results |
 | [pi-tick](https://github.com/gosvig123/pi-tick/tree/pi-agent-kit) | Scheduled agent jobs (fork branch `pi-agent-kit`) |
