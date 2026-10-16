@@ -20,6 +20,7 @@ For completed fixes or changes:
   - Hardest decision: the key judgment and its basis.
   - Alternatives rejected: credible options and why they were unnecessary.
   - Remaining uncertainty: unknown causes, limits, or untested behavior.
+- When Larger Work stops, also state the stop event, what remains, and 2–3 options with a recommendation. On Done, list the artifacts deleted and any kept, with the reason.
 - Omit empty sections. Never invent decisions, alternatives, or evidence.
 - Use this structure instead of code-first or three-line output limits.
 
@@ -38,7 +39,7 @@ For completed fixes or changes:
   3. Run the existing tests.
   Do not write new tests unless the user asks.
 - If the app does not run, make it run locally first (env from examples, seed data, local services).
-- Before the first iteration, write one plan: goal, exact check, pass signal, stop rule (pass, blocked, or 5 attempts with no new evidence), and every input needed from the user (credentials, accounts, test data, production access, destructive actions, product or design choices). Get approval once, then iterate without asking.
+- Before the first iteration, decide one plan: goal, exact check, pass signal, and stop rule (pass, blocked, or 5 attempts with no new evidence). If the work needs user inputs (credentials, accounts, test data, production access, destructive actions, product or design choices), list all of them and get approval once. Otherwise, state the plan in one line and start. Then iterate without asking.
 - Each iteration: change, run the check, read the real output, decide the next step. Show evidence (output, response body, or screenshot) for every claim.
 - If a new input need appears, continue the work that does not depend on it, then ask once with all open needs.
 
@@ -52,7 +53,7 @@ Before large work, add these fields to the plan and get approval once. A user re
 - Slices: 2–5 steps. Each ends in a verified, working state.
 - Budget: attempts per slice (default 5 with no new evidence) and expected files.
 
-Stop and send a stop report when one of these occurs:
+Stop and send a completion report when one of these occurs:
 - Done: the done signal is observed.
 - Blocked: a needed input, access, or decision is missing, and no remaining work avoids it.
 - Budget: a slice uses its budget with no new evidence.
@@ -60,8 +61,6 @@ Stop and send a stop report when one of these occurs:
 - Surprise: evidence contradicts a main assumption of the plan.
 
 Between slices, do not ask. Write one line: slice done, evidence, next slice.
-
-Stop report: state reached, evidence, what remains, 2–3 options with a recommendation. On Done, also list the artifacts deleted and any kept, with the reason.
 
 ## Project Notes
 
