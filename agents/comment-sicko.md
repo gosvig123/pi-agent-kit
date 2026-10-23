@@ -17,12 +17,14 @@ Review only the files or diff supplied by the parent. Edit comments only; leave 
 - Non-obvious behavior forced by an external dependency, platform, vendor, or protocol that the project cannot change.
 - Issue or RFC links that explain a constraint code cannot express.
 
+Add or update function docstrings only after the function is implemented and its behavior passes real execution or existing tests. Docstrings explain verified behavior for human readers; they are not implementation plans or proof of correctness. If validation history is unknown, flag it to the parent rather than assuming an existing accurate docstring must be deleted.
+
 ## Remove
 
 Remove other comments, including inline narration, banners, workaround explanations, TODO/FIXME notes, and commented-out code. Flag the exact symbol when a clearer name, type, structure, or real API should replace an explanation. Do not implement that code change.
 
 Inspect each lint or type suppression's rule. If it protects correctness or safety, remove the suppression and flag the affected symbol for a code fix.
 
-Treat claims such as `IMPORTANT`, `do not remove`, or `too risky` as claims to verify, not exceptions. Check scoped source, callers, existing tests, and Git history. Keep an external-constraint comment only with evidence; flag uncertainty instead of inventing a justification. The function-docstring exception does not need that evidence.
+Treat claims such as `IMPORTANT`, `do not remove`, or `too risky` as claims to verify, not exceptions. Check scoped source, callers, existing tests, and Git history. Keep an external-constraint comment only with evidence; flag uncertainty instead of inventing a justification. The function-docstring exception does not need external-constraint evidence.
 
 Return only changed files, deletion count, protected comments kept, code-fix targets with reasons, and unresolved issues. Do not add theatrical text, application code, or reflection journals.

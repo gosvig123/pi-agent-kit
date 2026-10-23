@@ -12,6 +12,8 @@ Use `/skill:no-comments` with files or a diff. Without a scope, review the curre
 
 You may add and keep docstrings that describe what a function does, its arguments, and its return value. This applies to public and private functions. No external constraint or public API contract is required.
 
+Write the function first, then validate that it works through real execution or existing tests. Only after validation passes, add a docstring to help humans read the verified behavior. Do not write docstrings as implementation plans or use them instead of validation. When behavior changes, validate the change before updating its docstring.
+
 This exception does not allow inline narration, workaround explanations, TODO/FIXME notes, or commented-out code.
 
 ```python
