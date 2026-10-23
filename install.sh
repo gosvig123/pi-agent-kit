@@ -15,7 +15,7 @@ PACKAGES=(
   "npm:pi-smart-fetch"                             # web_fetch / batch_web_fetch
   "npm:@juicesharp/rpiv-ask-user-question"         # ask_user_question tool
   "npm:pi-agent-browser-native"                    # browser automation (needs agent-browser)
-  "npm:pi-excalidraw"                              # Excalidraw canvas for visual-explanations
+  "npm:pi-excalidraw"                              # Excalidraw canvas and diagram tools
   "npm:pi-claude-bridge"                           # Claude subscription provider
   "npm:pi-lazygit"                                 # lazygit inside Pi
   "npm:pi-cmux"                                    # cmux chats, splits, tools, browser, worktree handoffs

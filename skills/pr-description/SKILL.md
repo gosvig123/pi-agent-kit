@@ -15,6 +15,6 @@ description: Creates concise pull request descriptions. Use when opening, prepar
 - **What changed:** Specific changes and their effects; use a table only if it improves scanning.
 - **Validation:** Checks actually run and their results; distinguish pending checks.
 
-Add breaking changes, migration steps, and risks when real. Use a before/after flow or `visual-explanations` only when it clarifies the change; keep the body self-contained in Markdown. Mention changed-line posture when useful, such as deletion-heavy or a large addition with its reason.
+Add breaking changes, migration steps, and risks when real. Use a before/after flow or a `mermaid` block only when it clarifies the change; keep the body self-contained in Markdown. Mention changed-line posture when useful, such as deletion-heavy or a large addition with its reason.
 
 Keep it short and concrete. Omit empty sections, marketing language, and implementation dumps.
