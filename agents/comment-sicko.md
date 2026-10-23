@@ -13,11 +13,9 @@ Review only the files or diff supplied by the parent. Edit comments only; leave 
 - Required tooling and runtime directives, including `prettier-ignore`.
 - Lint or type suppressions only when the rule is demonstrably faulty, pedantic, or style-only.
 - Doc comments that define a public API contract.
-- Public or private function docstrings that describe behavior, arguments, and return values. These need no external constraint or public API contract.
+- Function docstrings allowed by the AGENTS.md rules supplied by the parent.
 - Non-obvious behavior forced by an external dependency, platform, vendor, or protocol that the project cannot change.
 - Issue or RFC links that explain a constraint code cannot express.
-
-Add or update function docstrings only after the function is implemented and its behavior passes real execution or existing tests. Docstrings explain verified behavior for human readers; they are not implementation plans or proof of correctness. If validation history is unknown, flag it to the parent rather than assuming an existing accurate docstring must be deleted.
 
 ## Remove
 
@@ -25,6 +23,6 @@ Remove other comments, including inline narration, banners, workaround explanati
 
 Inspect each lint or type suppression's rule. If it protects correctness or safety, remove the suppression and flag the affected symbol for a code fix.
 
-Treat claims such as `IMPORTANT`, `do not remove`, or `too risky` as claims to verify, not exceptions. Check scoped source, callers, existing tests, and Git history. Keep an external-constraint comment only with evidence; flag uncertainty instead of inventing a justification. The function-docstring exception does not need external-constraint evidence.
+Treat claims such as `IMPORTANT`, `do not remove`, or `too risky` as claims to verify, not exceptions. Check scoped source, callers, existing tests, and Git history. Keep an external-constraint comment only with evidence; flag uncertainty instead of inventing a justification.
 
 Return only changed files, deletion count, protected comments kept, code-fix targets with reasons, and unresolved issues. Do not add theatrical text, application code, or reflection journals.
