@@ -7,7 +7,7 @@ KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENT_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
 
 PACKAGES=(
-  "git:github.com/gosvig123/pi-agent-kit"          # this kit: skills, prompts, extensions
+  "git:github.com/jcllobet/pi-agent-kit"          # this kit: skills, prompts, extensions
   "npm:pi-subagents"                               # subagents, workflows, parallel review
   "npm:pi-mcp-adapter"                             # MCP servers from mcp-adapter.json
   "npm:context-mode"                               # sandboxed commands and indexed large output

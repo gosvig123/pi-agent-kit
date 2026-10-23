@@ -7,7 +7,7 @@ A shared [Pi](https://pi.dev) agent setup: global working rules, skills, prompt 
 Requirements: Pi, Node.js 24.21 or newer, `git`, and the GitHub CLI (`gh auth login`).
 
 ```sh
-git clone https://github.com/gosvig123/pi-agent-kit.git
+git clone https://github.com/jcllobet/pi-agent-kit.git
 cd pi-agent-kit
 ./install.sh
 ```
@@ -20,7 +20,7 @@ The installer:
 
 Restart Pi after it finishes. Run `./install.sh` again at any time; it is safe to repeat. Run `pi update --extensions` to pull package updates.
 
-To try only the kit for one session, without the installer: `pi -e git:github.com/gosvig123/pi-agent-kit`.
+To try only the kit for one session, without the installer: `pi -e git:github.com/jcllobet/pi-agent-kit`.
 
 ## What is in the kit
 
@@ -44,7 +44,7 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | pr-description | Short pull request descriptions |
 | self-heal | Recover from tool, extension, provider, and subagent failures |
 | skill-creator | Create and improve skills |
-| visual-explanations | Pick Markdown or Excalidraw visuals for explanations |
+| visual-explanations | Pele diagrams by default; Excalidraw for editable canvases; Archify for explorable system diagrams |
 
 Optional skills. They load with the kit but need your own setup; without it they report the missing piece:
 
@@ -57,7 +57,7 @@ Optional skills. They load with the kit but need your own setup; without it they
 To turn off skills you do not want, run `pi config`, or narrow the kit entry in `~/.pi/agent/settings.json`:
 
 ```json
-{ "source": "git:github.com/gosvig123/pi-agent-kit", "skills": ["!skills/gmail", "!skills/google-calendar", "!skills/slack"] }
+{ "source": "git:github.com/jcllobet/pi-agent-kit", "skills": ["!skills/gmail", "!skills/google-calendar", "!skills/slack"] }
 ```
 
 ### Prompt templates
