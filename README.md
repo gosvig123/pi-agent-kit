@@ -44,7 +44,6 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | pr-description | Short pull request descriptions |
 | self-heal | Recover from tool, extension, provider, and subagent failures |
 | skill-creator | Create and improve skills |
-| visual-explanations | Pick Markdown or Excalidraw visuals for explanations |
 
 Optional skills. They load with the kit but need your own setup; without it they report the missing piece:
 
@@ -82,8 +81,12 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 | right-column | Shared right-side column that the pi-desk task panel uses |
 | cmux-needs-input | Sends a cmux notification when `ask_user_question` waits for you |
 | subright | `/subright` opens the current Pi branch in a new cmux pane on the right |
+| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), excalidraw, tick, aidlc (with its 6 skills), tasks, cmux, and ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`, `ctx_insight`). A set loads when the prompt names it (for example "browser", "diagram", "cron", "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. Under claude-bridge, a `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
+| output-spill | Saves `bash`, `gappd_query`, and `ctx_batch_execute` results over 8 KB to `~/.pi/agent/tmp/tool-output/<session>/` and gives the model the head, the tail, and the path. Files older than 7 days are deleted |
 
 The cmux and nvim extensions do nothing outside cmux or without nvim.
+
+`config/settings.defaults.json` also keeps new sessions small: it excludes skills that are rarely used in Pi (Hyperframes engine skills, figma, media-use, claude-design, ctx-* commands), and compacts claude-bridge Opus at about 200k instead of near its 1M window. A new claude-bridge session starts at about 26k tokens.
 
 ### Subagent
 

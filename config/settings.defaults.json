@@ -1,7 +1,35 @@
 {
   "enableSkillCommands": true,
-  "extensions": ["-builtin:mcp"],
+  "extensions": [
+    "-builtin:mcp"
+  ],
   "smartFetchDefaultMaxChars": 12000,
   "smartFetchDefaultBatchConcurrency": 4,
-  "smartFetchDefaultRemoveImages": true
+  "smartFetchDefaultRemoveImages": true,
+  "skills": [
+    "-~/.agents/skills/hyperframes",
+    "-~/.agents/skills/hyperframes-animation",
+    "-~/.agents/skills/hyperframes-audio",
+    "-~/.agents/skills/hyperframes-cli",
+    "-~/.agents/skills/hyperframes-core",
+    "-~/.agents/skills/hyperframes-creative",
+    "-~/.agents/skills/hyperframes-keyframes",
+    "-~/.agents/skills/hyperframes-registry",
+    "-~/.agents/skills/hyperframes-studio",
+    "-~/.agents/skills/media-use",
+    "-~/.agents/skills/figma",
+    "-~/.agents/skills/claude-design",
+    "-~/.agents/skills/ctx-doctor",
+    "-~/.agents/skills/ctx-insight",
+    "-~/.agents/skills/ctx-purge",
+    "-~/.agents/skills/ctx-stats",
+    "-~/.agents/skills/ctx-upgrade"
+  ],
+  "compaction": {
+    "modelOverrides": {
+      "claude-bridge/claude-opus-5-5": {
+        "reserveTokens": 800000
+      }
+    }
+  }
 }

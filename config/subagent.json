@@ -1,4 +1,3 @@
 {
-  "timeoutMs": 7200000,
-  "toolTimeoutMs": 300000
+  "timeoutMs": 7200000
 }

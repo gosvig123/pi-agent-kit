@@ -62,9 +62,17 @@ function maxLine(rows: DiffRow[]): number {
 }
 
 class InlineDiffView implements Component {
+  // The TUI renders every component on each spinner frame; the patch never changes, so reuse the lines.
+  private cache: { width: number; lines: string[] } | undefined;
+
   constructor(private readonly input: ViewInput) {}
 
   render(width: number): string[] {
+    if (this.cache?.width !== width) this.cache = { width, lines: this.renderLines(width) };
+    return this.cache.lines;
+  }
+
+  private renderLines(width: number): string[] {
     const parsed = parsePatch(this.input.patch);
     const shown = parsed.rows.slice(0, MAX_ROWS);
     const numberWidth = Math.max(2, String(maxLine(shown)).length);
@@ -75,7 +83,9 @@ class InlineDiffView implements Component {
     return [header, ...lines, this.input.theme.fg("borderMuted", "╰─")].map((line) => truncateToWidth(line, width));
   }
 
-  invalidate(): void {}
+  invalidate(): void {
+    this.cache = undefined;
+  }
 }
 
 export function createInlineDiffView(input: ViewInput): Component {
