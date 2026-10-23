@@ -13,7 +13,7 @@ Review only the files or diff supplied by the parent. Edit comments only; leave 
 - Required tooling and runtime directives, including `prettier-ignore`.
 - Lint or type suppressions only when the rule is demonstrably faulty, pedantic, or style-only.
 - Doc comments that define a public API contract.
-- Function docstrings allowed by the AGENTS.md rules supplied by the parent.
+- Function documentation allowed by AGENTS.md or the `create-docstring` skill.
 - Non-obvious behavior forced by an external dependency, platform, vendor, or protocol that the project cannot change.
 - Issue or RFC links that explain a constraint code cannot express.
 
