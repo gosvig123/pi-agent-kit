@@ -94,6 +94,8 @@ The cmux and nvim extensions do nothing outside cmux or without nvim.
 
 `agents/researcher.md` is a web research subagent. pi-subagents loads it from the kit (declared in `package.json`), replacing its built-in `researcher`, which needs search tools the kit does not install. It returns a sourced brief with a source ledger.
 
+`agents/reviewer.md` replaces the bundled reviewer with a review agent that can use shell commands for checks, read-only SQL, and runtime reproduction. It can print results or copy them to the clipboard, but must not edit source files, delete files, change Git state, install dependencies, or mutate shared databases or services.
+
 ## Packages
 
 | Package | Does |
