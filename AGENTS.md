@@ -31,31 +31,7 @@ For completed fixes or changes:
 
 ## Function docstrings
 
-Simplify confusing functions first; do not use docstrings to excuse bad code. Add a docstring only when the function still needs explanation despite clear names and structure. Describe what it does, its inputs, and its output.
-
-For example, `masked_softmax` converts selected tensor values into probabilities. Its docstring clarifies which mask values are included and what happens when everything is excluded—choices the function’s name does not explain.
-
-```python
-from torch import Tensor
-
-def masked_softmax(logits: Tensor, mask: Tensor, dim: int = -1) -> Tensor:
-    """
-    Compute softmax over the included values.
-
-    Args:
-        logits: Finite floating-point tensor.
-        mask: Boolean tensor matching logits; True includes a value.
-        dim: Dimension along which to normalize.
-
-    Returns:
-        Tensor with the same shape as logits. Excluded values are zero.
-        Slices with no included values return all zeros, not NaN.
-    """
-    masked_logits = logits.masked_fill(~mask, float("-inf"))
-    empty = ~mask.any(dim=dim, keepdim=True)
-    safe_logits = masked_logits.masked_fill(empty, 0)
-    return safe_logits.softmax(dim=dim).masked_fill(~mask, 0)
-```
+Add a docstring when callers need details the function's name and types do not show, such as input limits, side effects, or behavior on empty input. Fix unclear variable names or unnecessary branches instead of explaining them in comments.
 
 ## Verification Loop
 

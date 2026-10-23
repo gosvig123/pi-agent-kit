@@ -36,6 +36,7 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | babysit | Watch CI, deploys, or rollouts, fix safe minor failures, re-check |
 | blast-radius | What a change could break beyond its diff |
 | context-gardener | Keep a project's `CONTEXT.md` glossary accurate |
+| create-docstring | Selective function documentation, with language-aware detail and a golden example |
 | diagnose | Structured debugging for unclear, flaky, or performance bugs |
 | domain-modeling | Domain terms, relationships, and rules during design work |
 | frontend-design | Intentional visual direction for new UI |
