@@ -41,6 +41,7 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | frontend-design | Intentional visual direction for new UI |
 | github-issues | Draft, create, search, and update GitHub issues |
 | learn-from-session | Propose reusable lessons from corrections and failures |
+| no-comments | Manual comment cleanup with Comment Sicko; preserves function docstrings for behavior, arguments, and returns |
 | pr-description | Short pull request descriptions |
 | self-heal | Recover from tool, extension, provider, and subagent failures |
 | skill-creator | Create and improve skills |
@@ -53,6 +54,8 @@ Optional skills. They load with the kit but need your own setup; without it they
 | gmail, google-calendar, slack | The `codex-exec` subagent (pi-subagents) and Codex/ChatGPT hosted connectors for those accounts |
 | review-calls | A [Gappd](https://github.com/gosvig123/gappd) MCP server, or a transcript you paste in |
 | macos-app-drive | macOS, with Accessibility permission for the terminal |
+
+Run `/skill:no-comments` to review the current diff, or `/skill:no-comments <files>` for a narrower scope. This skill is manual-only and uses the kit's `comment-sicko` agent through pi-subagents.
 
 To turn off skills you do not want, run `pi config`, or narrow the kit entry in `~/.pi/agent/settings.json`:
 
@@ -85,7 +88,9 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 
 The cmux and nvim extensions do nothing outside cmux or without nvim.
 
-### Subagent
+### Subagents
+
+`agents/comment-sicko.md` reviews scoped comments for `/skill:no-comments`. It preserves the skill's exceptions, including public and private function docstrings that describe behavior, arguments, and returns.
 
 `agents/researcher.md` is a web research subagent. pi-subagents loads it from the kit (declared in `package.json`), replacing its built-in `researcher`, which needs search tools the kit does not install. It returns a sourced brief with a source ledger.
 
