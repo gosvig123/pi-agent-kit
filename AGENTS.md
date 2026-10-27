@@ -20,9 +20,9 @@ Show, do not narrate. Choose the visual by content:
 | Status | One symbol: ✅ done · ⛔ blocked · ⚠️ budget, drift, or surprise |
 | Files changed | Table: `path:line` · change |
 | Options or tradeoffs | Table, recommended row first, marked ★ |
-| Process, cause chain, data flow | Text flow: `A → B → C`; a `mermaid` block when it branches |
+| Process, cause chain, data flow | Text flow: `A → B → C`; a native `mermaid` block when it branches |
 | Evidence | Short code block with the real output |
-| Architecture, sequence, state, data model | `mermaid` block |
+| Architecture, sequence, state, data model | Native `mermaid` block |
 
 - One visual per idea. No decoration. No table for one row.
 - Use prose only for what a visual cannot carry: why, and what next.
@@ -33,12 +33,18 @@ Show, do not narrate. Choose the visual by content:
 
 The Pi terminal renders these natively. Use them when a visual makes a non-trivial answer clearer:
 
-- Markdown: tables, highlighted code blocks, links, and LaTeX math (as Unicode).
-- Fenced `mermaid` blocks render as Unicode box diagrams: `flowchart`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`. Other types, diagrams wider than the terminal, and diagrams in thinking show as source. Keep diagrams under ~100 columns: use `TD` for more than 4 nodes and short labels.
-- Pi shows the source for any grok-mermaid warning, not only for width. Put flowchart edge labels in pipes (`A -.->|text| B`), never inline (`A -. "text" .-> B`): a `<` or `>` in an inline label drops the edge. `<br/>` does not break lines; node text wraps at 24 columns (4 lines, then `…`), and edge labels are cut at 28 characters.
-- Inline images from tool results: `read` a PNG or call `excalidraw_capture_screenshot`.
-- For an editable canvas, run `load_toolset` `excalidraw`, use sans-serif text (`fontFamily: 2`), and check a screenshot before you show it.
-- For a standalone diagram file to share, use the `archify` skill.
+- Markdown: tables for comparisons, text flows for short linear explanations, highlighted code blocks, links, and LaTeX math (as Unicode).
+- Fenced `mermaid` blocks render as Unicode box diagrams: `flowchart`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`. Other types, grok-mermaid warnings, diagrams wider than the terminal, and diagrams in thinking show as source.
+- Keep diagrams within the terminal width; aim below ~100 columns. Prefer `TD` for more than four nodes and keep labels short without losing meaning.
+- Put flowchart edge labels in pipes (`A -.->|text| B`), never inline (`A -. "text" .-> B`): a `<` or `>` in an inline label can drop the edge. `<br/>` does not break lines. Node text wraps at 24 columns (four lines, then `…`); edge labels truncate at 28 characters.
+- Check the rendered terminal result for missing or truncated labels and relationships. A fenced source block alone does not prove rendering. Fix syntax or layout without dropping meaning. If you cannot inspect the terminal result, do not claim visual validation.
+- Use option-specific previews for structured questions. For code changes, inspect the diff and show affected boundaries, risk, and blast radius. For current-versus-planned operations, show actual triggers and concrete incident examples.
+
+Choose the workflow by the deliverable; honor explicit tool or format requests:
+
+- Use native Pi output when it communicates the idea clearly in the terminal.
+- Use `archify` directly for validated, explorable system diagrams or structured explainer pages. Follow its full workflow.
+- Use `visual-explanations` for other graphical diagram files, richer visual layout, or editable canvases.
 
 ### Completion Report
 
