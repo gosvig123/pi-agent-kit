@@ -31,5 +31,7 @@
         "reserveTokens": 800000
       }
     }
-  }
+  },
+  "hideThinkingBlock": true,
+  "quietStartup": "header"
 }

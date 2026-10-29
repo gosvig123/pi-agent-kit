@@ -9,11 +9,14 @@
 - When confidence is low, gather more information. If it is still low, ask the user.
 - To work like an expert, use the expert's methods and tools, not only their words. Start from the rawest source available (logs, data, source code, transcripts), not from summaries. Name a role only to choose methods; do not role-play.
 - Make errors actionable: operation, target, cause, and recovery step.
+- Between tool calls, write at most one line, and only for a finding or a change of plan.
 - Plans and work artifacts are temporary. Keep the plan in the conversation; write a plan file only when the work spans sessions or the user asks. When done, move durable facts to `AGENTS.md`, `CONTEXT.md`, or docs, then delete the plans, scratch notes, throwaway scripts, and temp data you created. Delete an old plan that no longer matches the code; do not update it. Ask before you delete what you did not create.
 
 ## Output
 
-Show, do not narrate. Choose the visual by content:
+Show, do not narrate. Give the answer or result in the first 1–2 lines. Keep a default reply to 10 lines or fewer; give more detail only when the user asks or the content needs it (a plan, a review, a long table).
+
+Choose the visual by content:
 
 | Content | Visual |
 |---|---|
@@ -27,6 +30,7 @@ Show, do not narrate. Choose the visual by content:
 - One visual per idea. No decoration. No table for one row.
 - Use prose only for what a visual cannot carry: why, and what next.
 - Use real names from the code or data. Mark unknown parts as unknown.
+- Spell out terms instead of abbreviations or acronyms. Keep only names that appear in the code or the tool (`PR`, `CI`, `API`).
 - When you create or change something the user will look at (file, sheet, PR, setting, record), give its path or link in the first lines of the reply.
 
 ### Visuals
@@ -56,7 +60,7 @@ Evidence: <command → output, response body, or screenshot>
 Next: <only when needed>
 ```
 
-For non-trivial work, end with:
+Only when the work had a real tradeoff, end with these (omit each one that is empty):
 - **Decision:** the hardest judgment and its basis.
 - **Rejected:** credible alternatives and why they were unnecessary.
 - **Unknown:** unknown causes, limits, or untested behavior.
@@ -88,8 +92,12 @@ Work is large when it spans more than one component, needs more than ~5 file edi
 
 Between slices, do not ask. Write one line: `✅ Slice 2/4 — <evidence> — next: <slice>`.
 
+After the last slice, run a review loop before you report Done. Follow `/review-loop` (`pi-subagents/prompts/review-loop.md`): fresh-context `reviewer` agents in parallel, then one fix `worker` for the accepted P0/P1 findings, at most 3 rounds. This rule is approval to start these subagents. Done needs a clean review: no P0, and no P1 fix worth doing now. Put the rounds, fixes, and deferred findings in the completion report. When the work is on a PR, push the clean result, then run `/pr-feedback` before you report Done.
+
+After you open a PR or push to one, follow `/pr-feedback` (`pi-agent-kit/prompts/pr-feedback.md`): wait for the bot reviews (Copilot, Greptile), evaluate each comment on evidence, push fixes, then reply and resolve. Each reply says that an agent wrote it on behalf of the user. This rule is approval for those pushes, replies, and resolves.
+
 Stop and send a completion report on:
-- ✅ **Done:** the done signal is observed.
+- ✅ **Done:** the done signal is observed, the review loop is clean, and on a PR `/pr-feedback` has finished.
 - ⛔ **Blocked:** a needed input, access, or decision is missing, and no remaining work avoids it.
 - ⚠️ **Budget:** a slice used its budget with no new evidence.
 - ⚠️ **Drift:** the work needs out-of-scope changes, a new dependency, a schema or public API change, or a destructive action.
