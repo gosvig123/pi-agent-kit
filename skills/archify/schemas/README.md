@@ -24,8 +24,8 @@ Every diagram schema requires `schema_version`, `diagram_type`, `meta` (with
 `relationships`, and `cards`, which are optional — and sets `additionalProperties: false` at every
 level, so unknown fields are rejected rather than silently ignored.
 
-Every `meta` object also accepts `animation: "trace"` for opt-in SVG/CSS motion
-in generated HTML. Omit it, or set `"none"`, for the default static output.
+Every `meta` object also accepts `animation` for input compatibility. Omit it:
+every diagram plays live motion, whatever the value.
 It also accepts `locale`, any well-formed language tag (schema pattern
 `^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$`). The field selects the fixed Viewer UI,
 renderer-owned default legend and accessibility copy, document-title suffix,
@@ -45,10 +45,8 @@ valid `translations` value → bundled catalog for `locale` → English. An
 unrecognized key or mismatched placeholders never replaces a valid
 lower-priority message and fails no render; `validate`/`render`/`deliver`
 report rejected entries and the final resolved coverage to stderr.
-`visual_preset` accepts `classic` (the stable default), `signal-flow` (luminous
-motion-forward presentation), `blueprint` (high-contrast engineering review),
-or `editorial` (warm publication-style design review and documentation).
-Presets change only viewer styling; they do not alter semantic IDs or geometry.
+`visual_preset` is still accepted for input compatibility, but the renderer
+ignores it: every diagram renders dark in the `blueprint` preset.
 Sequence `meta` additionally accepts `column_fit`. The default `spread` applies whether or not `meta.viewBox` is supplied.
 Explicit `fixed` keeps the historical 108px column gap and 86px participant
 boxes. `spread` derives column distance and box width from the viewBox, with

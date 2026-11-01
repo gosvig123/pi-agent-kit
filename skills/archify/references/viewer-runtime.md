@@ -30,23 +30,13 @@ unsupported URL templates make copying fail without accessing the clipboard.
 This seam changes copied addresses only, not query parsing, history, permissions,
 embedding isolation or authored geometry. It adds no network or storage surface.
 
-## Motion and presentation
+## Motion
 
-Every rendered diagram enables reader-controlled Live/Still motion by default. In Live, every edge runs a small light show on one shared cycle: a comet (glow, halo, tail, head, plus a dimmer echo on every edge) cascades downstream, leaves a soft wake, and lands as a ripple on the target node, while nodes enter once and then glow on the same cycle with authored-step staggering. Phases follow the authored step order (source-node rank, chronological in sequence diagrams); the flow rides a separate Viewer overlay and the original line styles and arrowheads remain intact. Compact edges receive a larger, brighter comet; echoes stay dimmer. With no saved preference, new pages start Still. Choosing Live starts continuous flow and saves that preference; choosing Still stops it and clears the saved Live preference. Existing saved Still preferences remain Still. Semantic exploration temporarily owns the motion budget, and continuous flow resumes when that action releases it. Diagrams without connections retain their bounded node entrance rather than inventing a flow. Omit `meta.animation`; historical `"trace"` and `"none"` values remain accepted for input compatibility and do not change this default. Reduced motion, page hiding, print, and canonical export preserve complete static meaning. Presentation Stage changes viewer chrome and framing, never authored geometry. This is not a mobile product feature; narrow layouts get containment only.
+Every rendered diagram is always Live. There is no Live/Still button and no saved preference. Every edge runs a small light show on one shared cycle: a comet (glow, halo, tail, head, plus a dimmer echo on every edge) cascades downstream, leaves a soft wake, and lands as a ripple on the target node, while nodes enter once and then glow on the same cycle with authored-step staggering. Phases follow the authored step order (source-node rank, chronological in sequence diagrams); the flow rides a separate Viewer overlay and the original line styles and arrowheads remain intact. Semantic exploration temporarily owns the motion budget, and continuous flow resumes when that action releases it. Diagrams without connections retain their bounded node entrance. Omit `meta.animation`; the renderer ignores it. The OS reduced-motion setting, page hiding, and print still pause motion.
 
-## Canonical exports
+## Fixed appearance
 
-The export menu can copy/download full-diagram PNG, download JPEG/WebP, download a dual-theme SVG, and record a trace-enabled WebM. Viewer state—Guide, Lens, finder, focus, route, camera, radar, presentation, motion ownership, and temporary overlays—must be removed from canonical export.
-
-Opening, closing, or completing an export preserves the live Focus/Reach selection for continued exploration. Export-owned download activation is not outside dismissal; genuine outside activation and Escape retain their existing behavior. Full-diagram PNG/SVG exports still contain the complete canonical diagram, while the Reach Share Card communicates the active authored closure.
-
-### Route Share Card
-
-After a real directed Route Probe resolves, the reader may use **Export → Route Share Card**. It reuses the exact ordered route snapshot and the shared Share Card seam: `format=share-card`, `variant=route`. The isolated clone may use only static `data-share-route-*` decoration. It is download-only, fails closed for stale/unreachable/conflicting routes, and never becomes the canonical artifact.
-
-### Reach Share Card
-
-After a non-empty authored reachability query, the reader may use **Export → Reach Share Card**. It consumes the already resolved upstream/downstream node and edge set without rerunning traversal: `format=share-card`, `variant=reach`. The isolated clone may use only static `data-share-reach-*` decoration. It is download-only. Call it authored reachability—not impact, blast radius, breakage, or runtime causality.
+Every diagram is dark and uses the `blueprint` preset. The viewer has no toolbar: no theme, style, presentation, or export control. Keys T, S, F, and E do nothing.
 
 ## Truth boundary
 

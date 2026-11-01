@@ -344,7 +344,7 @@ export function compareArchitecture(base, head, evidence = {}) {
       connections: 'connections[].id (required)',
       boundaries: 'boundaries[].kind + boundaries[].label (derived)',
     },
-    view: { visualPreset: head.meta?.visual_preset || 'classic' },
+    view: { visualPreset: 'blueprint' },
     limitations: [
       'Authored Architecture IR only; no runtime impact, causality, risk, or mergeability is inferred.',
       'Boundary identity is conservatively derived from kind + label.',

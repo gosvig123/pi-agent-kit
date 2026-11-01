@@ -133,11 +133,9 @@ domain wording, and keep that authored override in the primary language.
 
 ## Visual preset default
 
-Omit `meta.visual_preset` by default. The renderer then opens the diagram in
-`classic` for both light and dark color modes. Color mode and visual preset are
-independent viewer state: switching Light / Dark must preserve the current
-preset. Author `signal-flow`, `blueprint`, or `editorial` only when the user
-explicitly requests that visual style.
+Omit `meta.visual_preset`. Every diagram renders dark in the `blueprint`
+preset; the renderer ignores the field and the viewer has no theme or style
+control.
 
 ## Engineering profile default
 

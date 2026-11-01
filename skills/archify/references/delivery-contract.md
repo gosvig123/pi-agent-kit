@@ -431,9 +431,10 @@ first, then Edge under `%ProgramFiles(x86)%`, `%ProgramFiles%`, and `%LocalAppDa
 followed by `msedge` on PATH. On macOS and Linux, discovery also checks
 Chrome/Chromium first, then the Edge application bundle (macOS) and
 `microsoft-edge`/`microsoft-edge-stable` on PATH. It
-measures light-theme containment at 1440×900, 1600×1000, 1920×1080, and
-2048×1320, and verifies the requested light theme at all four viewports, the dark
-theme at both endpoints, and READ/Still runtime states. A requested theme that
+measures dark-theme containment at 1440×900, 1600×1000, 1920×1080, and
+2048×1320, and verifies the dark theme at all four viewports and READ/Still
+runtime states. Native diagrams are always dark; explainers still check light
+and dark. A requested theme that
 resolves to a different theme fails with measured evidence. It creates one
 `<output-stem>.browser-check.json` receipt and no screenshots or contact sheet.
 Pass `--out-dir <dir>` to place the receipt in a separate evidence directory.
@@ -507,8 +508,8 @@ node bin/archify.mjs visual-check <output.html> --summary --require-provenance
 
 `--summary` returns compact JSON with all diagnostics and absolute paths to the complete receipt, contact sheet, and every screenshot. For a chosen visual review, inspect the relevant captures; capture success is not perceptual approval. `--json` retains the full receipt output for existing consumers. Both modes run the same checks and keep the same exit status. If cleanup fails after publication, the summary retains the final failure diagnostics and `publication` recovery details; the linked receipt records the earlier committed evidence.
 
-It performs the same automated browser measurements, captures light/dark
-screenshots at 1440×900 and 2048×1320, and writes four viewport PNG sidecars,
+It performs the same automated browser measurements, captures dark
+screenshots at 1440×900 and 2048×1320 (explainers also capture light), and writes the viewport PNG sidecars,
 one relative-path HTML contact sheet, and one JSON receipt. `--out-dir <dir>` moves all of these sidecars together.
 Open the HTML contact sheet in a browser or inspect the viewport PNGs with an image reader. Its receipt reports `visualReview: "pending"` because captures do not themselves
 make a perceptual judgment. Capture and provenance failures follow the ownership rules below.
@@ -617,8 +618,8 @@ For the default standalone desktop viewer, measure 1440×900, 1600×1000, 1920×
 
 For an escalation, run `visual-check` on the current finalized artifact, inspect
 its contact sheet with a capable image reader or human, and check both endpoint
-themes, the default READ view, line crossings/corridors, label masks, node/card
-fit, focus/search/passport closure, and export cleanliness. This review is
+viewports, the default READ view, line crossings/corridors, label masks, node/card
+fit, and focus/search/passport closure. This review is
 supplementary and never changes `browser_evidence`. An unconstrained browser
 glance can support perceptual review only.
 

@@ -45,6 +45,8 @@ export const CAPTURE_VIEWPORTS = Object.freeze([
   VISUAL_CHECK_VIEWPORTS[VISUAL_CHECK_VIEWPORTS.length - 1],
 ]);
 export const THEMES = Object.freeze(['light', 'dark']);
+// Native diagrams are always dark; only explainers still switch themes.
+export const DIAGRAM_THEMES = Object.freeze(['dark']);
 const EXIT = Object.freeze({ pass: 0, fail: 1, skipped: 2 });
 export const CHROME_NO_SANDBOX_ENV = 'ARCHIFY_CHROME_NO_SANDBOX';
 const VISUAL_SIDECAR_SUFFIXES = Object.freeze([
@@ -189,7 +191,7 @@ function targetSidecarNamespace(directory, component) {
   throw error;
 }
 
-function evidenceSidecarPaths(artifactPath, { outDir, command = 'visual-check', capture = true, captureViewports = CAPTURE_VIEWPORTS } = {}) {
+function evidenceSidecarPaths(artifactPath, { outDir, command = 'visual-check', capture = true, captureViewports = CAPTURE_VIEWPORTS, themes = DIAGRAM_THEMES } = {}) {
   let artifact = path.resolve(artifactPath);
   try {
     // Existing aliases, including Windows 8.3 spellings, must share the
@@ -220,7 +222,7 @@ function evidenceSidecarPaths(artifactPath, { outDir, command = 'visual-check', 
     } : namespaceStem.options,
   );
   const base = path.join(directory, `${stem}.${command}`);
-  const screenshots = (capture ? captureViewports : []).flatMap(({ width, height }) => THEMES.map((theme) => ({
+  const screenshots = (capture ? captureViewports : []).flatMap(({ width, height }) => themes.map((theme) => ({
     width,
     height,
     theme,
@@ -2384,9 +2386,9 @@ function publishReceiptOnly(artifactPath, outputs, receipt, ownership) {
 function persistBrowserEvidenceFailure(
   artifactPath,
   failure,
-  { outDir, compareSidecarParents = sameParent, ownership, command = 'visual-check', capture = true, captureViewports = CAPTURE_VIEWPORTS } = {},
+  { outDir, compareSidecarParents = sameParent, ownership, command = 'visual-check', capture = true, captureViewports = CAPTURE_VIEWPORTS, themes = DIAGRAM_THEMES } = {},
 ) {
-  const outputs = evidenceSidecarPaths(artifactPath, { outDir, command, capture, captureViewports });
+  const outputs = evidenceSidecarPaths(artifactPath, { outDir, command, capture, captureViewports, themes });
   const directory = resolveSidecarDirectory(artifactPath, outputs, compareSidecarParents);
   const capturedArtifact = readRegularFileContents(artifactPath, {
     subject: 'failure-artifact',
@@ -2467,8 +2469,10 @@ async function runBrowserEvidence({
   const inspectionViewports = explainer ? EXPLAINER_VIEWPORTS : VISUAL_CHECK_VIEWPORTS;
   const captureViewports = explainer ? EXPLAINER_VIEWPORTS : CAPTURE_VIEWPORTS;
   const observe = explainer ? explainerObservation : observation;
+  const themes = explainer ? THEMES : DIAGRAM_THEMES;
+  const primaryTheme = themes[0];
   try {
-  const outputs = evidenceSidecarPaths(artifact, { outDir, command, capture, captureViewports });
+  const outputs = evidenceSidecarPaths(artifact, { outDir, command, capture, captureViewports, themes });
   const directory = resolveSidecarDirectory(artifact, outputs, compareSidecarParents);
   const receipt = baseReceipt({
     artifactPath: artifact,
@@ -2522,7 +2526,7 @@ async function runBrowserEvidence({
         evidence: { reason: error.message },
         supportedFixes: ['retry after resolving the reported staging filesystem error'],
       })],
-    }, { outDir, compareSidecarParents, ownership, command, capture, captureViewports }) };
+    }, { outDir, compareSidecarParents, ownership, command, capture, captureViewports, themes }) };
   }
   const verifyInspectionArtifact = () => {
     const entry = ownership.stagedEntries.get(artifact);
@@ -2538,7 +2542,7 @@ async function runBrowserEvidence({
       artifact: { path: artifact, sha256: sha256(artifactBytes), bytes: artifactBytes.byteLength },
       provenance: error.deliveryProvenance?.status, error: error.message,
       diagnostics: error.archifyDiagnostics || [],
-    }, { outDir, compareSidecarParents, ownership, command, capture, captureViewports }) };
+    }, { outDir, compareSidecarParents, ownership, command, capture, captureViewports, themes }) };
   }
 
   const resolvedChrome = chromePath || resolveChrome();
@@ -2586,12 +2590,12 @@ async function runBrowserEvidence({
     try {
       const inspect = (options) => explainer ? inspectExplainerBrowser(browser, options) : browser.inspect(options);
       for (const viewport of inspectionViewports) {
-        const key = screenshotKey(viewport.width, viewport.height, 'light');
+        const key = screenshotKey(viewport.width, viewport.height, primaryTheme);
         const screenshot = screenshotsByKey.get(key);
         const metrics = await inspect({
           artifactPath: inspectionArtifact,
           ...viewport,
-          theme: 'light',
+          theme: primaryTheme,
           ...(screenshot ? {
             screenshotPath: screenshot.stagedPath,
             writeScreenshot: (bytes) => writeStagedEvidence(ownership, screenshot.path, bytes),
@@ -2608,9 +2612,9 @@ async function runBrowserEvidence({
             }
           }
         }
-        observations.set(key, observe({ ...viewport, theme: 'light', metrics }));
+        observations.set(key, observe({ ...viewport, theme: primaryTheme, metrics }));
       }
-      for (const viewport of captureViewports) {
+      for (const viewport of themes.includes('dark') && primaryTheme !== 'dark' ? captureViewports : []) {
         const key = screenshotKey(viewport.width, viewport.height, 'dark');
         const screenshot = screenshotsByKey.get(key);
         const metrics = await inspect({
@@ -2649,7 +2653,7 @@ async function runBrowserEvidence({
     }
 
     receipt.containment.viewports = inspectionViewports.map(({ width, height }) => (
-      observations.get(screenshotKey(width, height, 'light'))
+      observations.get(screenshotKey(width, height, primaryTheme))
     ));
     receipt.readability.viewports = receipt.containment.viewports.map((entry) => ({ ...entry }));
     receipt.viewerChrome.viewports = receipt.containment.viewports.map((entry) => ({ ...entry }));
@@ -2756,7 +2760,7 @@ async function runBrowserEvidence({
       receipt: persistBrowserEvidenceFailure(artifact, receipt, {
         outDir,
         compareSidecarParents,
-        ownership, command, capture, captureViewports,
+        ownership, command, capture, captureViewports, themes,
       }),
     };
   }

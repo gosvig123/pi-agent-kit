@@ -239,7 +239,7 @@ export function writeDiagram({ outPath, template, diagramType, meta, svg, cards,
     svg,
     cards: renderCards(cards),
     locale: meta.locale,
-    visualPreset: meta.visual_preset || 'classic',
+    visualPreset: 'blueprint',
     sourceEvidence,
   });
   let candidatePath;
@@ -358,9 +358,9 @@ export function validateCrossCollectionContracts(diagramType, diagram) {
 
 // Accessible name for the generated diagram SVG.
 export function svgRootAttrs(meta, explicitQualityProfile) {
-  // Motion is a Viewer capability for every diagram; Live/Still controls playback.
+  // Every diagram is Live and uses the blueprint preset; meta.visual_preset is ignored.
   const animation = ' data-animation="trace"';
-  const preset = ` data-preset="${esc(meta.visual_preset || 'classic')}"`;
+  const preset = ' data-preset="blueprint"';
   const engineeringProfile = meta.engineering_profile
     ? ` data-engineering-profile="${esc(meta.engineering_profile)}"`
     : '';

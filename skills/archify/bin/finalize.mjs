@@ -11,7 +11,6 @@ import {
 } from '../renderers/shared/atomic-output.mjs';
 import {
   browserCheckSidecarPaths,
-  CAPTURE_VIEWPORTS,
   ChromeVisualBrowser,
   findChrome,
   persistBrowserCheckFailure,
@@ -156,18 +155,18 @@ function validBrowserEvidence(receipt) {
         receipt[group]?.status === 'pass' && Array.isArray(receipt[group].observations) && receipt[group].observations.length > 0
         && receipt[group].observations.every(entry => entry.ok === true));
   }
+  // Native diagrams are always dark.
   return exactViewportCoverage(receipt.containment?.viewports, VISUAL_CHECK_VIEWPORTS, (entry) => (
-    entry.theme === 'light' && entry.ok === true
+    entry.theme === 'dark' && entry.ok === true
   ))
     && exactViewportCoverage(receipt.readability?.viewports, VISUAL_CHECK_VIEWPORTS, (entry) => (
-      entry.theme === 'light' && entry.ok === true && entry.readabilityOk === true
+      entry.theme === 'dark' && entry.ok === true && entry.readabilityOk === true
     ))
     && exactViewportCoverage(receipt.viewerChrome?.viewports, VISUAL_CHECK_VIEWPORTS, (entry) => (
-      entry.theme === 'light' && entry.ok === true && entry.viewerChromeOk === true
+      entry.theme === 'dark' && entry.ok === true && entry.viewerChromeOk === true
     ))
     && exactViewportCoverage(receipt.themeStates?.viewports,
-      [...VISUAL_CHECK_VIEWPORTS.map((viewport) => ({ ...viewport, theme: 'light' })),
-        ...CAPTURE_VIEWPORTS.map((viewport) => ({ ...viewport, theme: 'dark' }))],
+      VISUAL_CHECK_VIEWPORTS.map((viewport) => ({ ...viewport, theme: 'dark' })),
       (entry, expected) => entry.ok === true
         && entry.requestedTheme === expected.theme
         && entry.resolvedTheme === expected.theme);
