@@ -9,6 +9,31 @@ import { Type } from "typebox";
 // until the model stops. load_toolset therefore asks the model to stop and queues a
 // follow-up prompt; that prompt starts a fresh query with the loaded tools. Do not use
 // `terminate`: it leaves the query waiting, and the bridge then reuses it.
+//
+// load_toolset also shortens the long context-mode tool descriptions through its
+// prepareLoadout hook. The originals cost about 4k more tokens on every call; these keep
+// each rule and drop the examples. Parameter descriptions stay unchanged.
+const SHORT_DESCRIPTIONS: Record<string, string> = {
+	ctx_execute:
+		"Run code in a sandboxed subprocess (javascript, typescript, shell, python, ruby, go, rust, php, perl). Only what the code prints enters the conversation, so filter, count, parse, and aggregate inside the code and print only the answer. " +
+		"Use it when output size is unknown (repo-wide greps, list endpoints, logs, query results). Pass `intent` to index output over ~5 KB and get section titles back; then use ctx_search. Pass `background: true` to keep a server or watcher alive. " +
+		"Use bash instead for short known output, file changes, and cd/ls. Wrap risky calls in try/catch: uncaught errors go to stderr.",
+	ctx_execute_file:
+		"Load one file into the FILE_CONTENT variable and run code over it; only what the code prints enters the conversation. Use it to learn something about a large or structured file (counts, matches, parsed fields) without reading it. " +
+		"Pass `intent` to index large output for ctx_search. Use read instead when you will edit the file, need a known line range, or will use all of a small file.",
+	ctx_search:
+		"Search the knowledge base: content stored by ctx_index, ctx_fetch_and_index, and ctx_batch_execute, plus auto-captured session memory (sources such as decision, error, error-resolution, blocker, plan, user-prompt, rejected-approach, compaction). " +
+		"Matching uses stemming, substrings, typo correction, and proximity ranking. Put all related questions in one call, 2-4 specific terms per query. Use `source` to scope (partial match), `sort: \"timeline\"` for prior sessions and auto-memory (relevance covers only the current session), and `contentType` for code or prose. " +
+		"For one question about data that is not stored, run code with ctx_execute instead. Calls are throttled in a rolling window.",
+	ctx_fetch_and_index:
+		"Fetch URLs (plain HTTP, no JavaScript), convert them to markdown, index them, and return a short preview per source; read sections later with ctx_search(source: label). Use `requests` with `concurrency` 2-8 for many URLs. " +
+		"Results are cached for 24 hours; `ttl` changes the window and `ttl: 0` or `force: true` fetches again. For pages that need JavaScript, use the browser tools.",
+	ctx_batch_execute:
+		"Run several shell commands in one call. Each output is indexed, and `queries` return the matching sections in the same call (this is the only search for that call, so include every question). Raw output is not returned. " +
+		"Use it for 3 or more related commands, such as gh lookups, git log plus diff, or multi-file reads. Set `concurrency` 2-8 for I/O-bound commands; keep 1 for builds, tests, and commands that share ports or locks. " +
+		"To derive an answer, add a command that processes the output and prints only the result. For one command with no query, use ctx_execute.",
+};
+
 interface Toolset {
 	summary: string;
 	tools: RegExp; // tool names in the set
@@ -36,13 +61,6 @@ const TOOLSETS: Record<string, Toolset> = {
 		sections: [],
 		keywords: /\b(tick|cron|launchd|recurring|scheduled? (a )?(job|agent|run))\b/i,
 	},
-	aidlc: {
-		summary: "AI-DLC lifecycle: approvals, handoffs, and questions for a ticket",
-		tools: /^aidlc_/,
-		sections: [],
-		skills: /^aidlc(-|$)/,
-		keywords: /\b(aidlc|ai-dlc)\b/i,
-	},
 	tasks: {
 		summary: "tasks-go task lists: view, create, update, complete, and delete tasks and subtasks",
 		tools: /^tasks_/,
@@ -56,10 +74,23 @@ const TOOLSETS: Record<string, Toolset> = {
 		keywords: /\b(cmux|split pane|new pane|right pane|new (cmux )?(tab|workspace)|open (a )?terminal|hand ?off)\b/i,
 	},
 	"ctx-admin": {
-		summary: "context-mode maintenance: ctx_stats, ctx_doctor, ctx_upgrade, ctx_purge, ctx_insight",
-		tools: /^ctx_(stats|doctor|upgrade|purge|insight)$/,
+		summary: "context-mode maintenance and manual indexing: ctx_stats, ctx_doctor, ctx_upgrade, ctx_purge, ctx_insight, ctx_index",
+		tools: /^ctx_(stats|doctor|upgrade|purge|insight|index)$/,
 		sections: [],
-		keywords: /\b(ctx[_-](stats|doctor|upgrade|purge|insight)|context-mode (stats|doctor|upgrade|purge|insight|dashboard))\b/i,
+		keywords: /\b(ctx[_-](stats|doctor|upgrade|purge|insight|index)|context-mode (stats|doctor|upgrade|purge|insight|dashboard))\b/i,
+	},
+	// The sets below hold tools that a week of sessions used less than once per 10 sessions.
+	sessions: {
+		summary: "session_lookup: find earlier Pi conversations by topic",
+		tools: /^session_lookup$/,
+		sections: [],
+		keywords: /\b((earlier|previous|past|old|other) (pi )?(conversations?|sessions?|threads?|chats?)|session_lookup)\b/i,
+	},
+	background: {
+		summary: "bg_wait: wait for detached or provider background work without native notification",
+		tools: /^bg_wait$/,
+		sections: [],
+		keywords: /\bbg_wait\b/i,
 	},
 };
 const ENTRY_TYPE = "toolset-load";
@@ -124,6 +155,7 @@ export default function toolsets(pi: ExtensionAPI) {
 		parameters: Type.Object({
 			name: Type.Union(Object.keys(TOOLSETS).map((name) => Type.Literal(name)), { description: "Tool set to load" }),
 		}),
+		prepareLoadout: () => ({ descriptions: SHORT_DESCRIPTIONS }),
 		async execute(_toolCallId, params) {
 			if (!load(params.name, "load_toolset")) {
 				return { content: [{ type: "text", text: `The ${params.name} tool set is already loaded.` }] };

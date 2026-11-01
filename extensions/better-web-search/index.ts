@@ -6,7 +6,7 @@ import { searchProviders } from "./search.ts";
 const QUERY_DISPLAY_LIMIT = 500;
 const SEARCH_GUIDELINES = [
   "Use better_web_search when current, external, or source-backed information would improve the answer.",
-  "After better_web_search, verify important claims by fetching the strongest primary sources with web_fetch.",
+  "After better_web_search, verify important claims by fetching the strongest primary sources with ctx_fetch_and_index.",
 ];
 const SEARCH_PARAMETERS = Type.Object({
   query: Type.String({ description: "Precise search query with relevant terms, dates, and site filters." }),

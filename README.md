@@ -67,6 +67,7 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 | `/commit-push` | Commit and push in themed commits |
 | `/push-only` | Push the current branch |
 | `/pr-review <number>` | Review a GitHub PR and report findings in chat |
+| `/pr-feedback [number]` | Wait for PR reviews, evaluate each comment, push fixes, reply as an agent, and resolve |
 
 ### Extensions
 
@@ -75,15 +76,17 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 | better-web-search | `better_web_search` tool. Uses the Codex CLI login, or `BRAVE_SEARCH_API_KEY` / `TAVILY_API_KEY` |
 | checkpoint-nudge | After long runs without user input, reminds the agent of the `AGENTS.md` larger-work check |
 | self-heal | Groups failed tool results into one recovery message and allows one safe retry |
-| fetch-error-normalizer | Marks failed `web_fetch` and fully failed `batch_web_fetch` results as errors so self-heal sees them |
-| hunk-inline | Shows `edit` and `write` results as compact diffs |
+| hunk-inline | Shows `edit` results as compact diffs and `write` results as compact summaries; uses Pi's renderer hook without replacing tool execution, so it can load with pi-cmux's remote tools |
 | mermaid-fit | When a Mermaid flowchart is too wide for the terminal, draws it in the other direction (`LR` ↔ `TD`). If it still does not fit, adds a line that gives the needed width instead of showing only the source |
 | file-preview | Click file links in the transcript to open them in nvim; Alt+O quick open |
 | right-column | Shared right-side column that the pi-desk task panel uses |
 | cmux-needs-input | Sends a cmux notification when `ask_user_question` waits for you |
+| prompt-pin | Pins the first prompt of the session above the editor, with the count of later prompts. Ctrl+Shift+P or `/trail` expands it to the first prompt in full and the last 8 later prompts |
 | subright | `/subright` opens the current Pi branch in a new cmux pane on the right |
-| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), excalidraw, tick, aidlc (with its 6 skills), tasks, cmux, and ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`, `ctx_insight`). A set loads when the prompt names it (for example "browser", "diagram", "cron", "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. Under claude-bridge, a `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
+| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), excalidraw, tick, tasks, cmux, ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`, `ctx_insight`, `ctx_index`), sessions (`session_lookup`), and background (`bg_wait`). It also gives the context-mode tools short descriptions through the `load_toolset` `prepareLoadout` hook. A set loads when the prompt names it (for example "browser", "diagram", "cron", "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. Under claude-bridge, a `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
 | output-spill | Saves `bash`, `gappd_query`, and `ctx_batch_execute` results over 8 KB to `~/.pi/agent/tmp/tool-output/<session>/` and gives the model the head, the tail, and the path. Files older than 7 days are deleted |
+| ctx-timeout | Gives `ctx_execute`, `ctx_execute_file`, and `ctx_batch_execute` calls a 120 s `timeout` when they have none. Without one, context-mode runs a command with no limit and the session waits |
+| slow-search-guard | In `bash`, `ctx_execute` shell, and `ctx_batch_execute`, rewrites `grep -r` to an equivalent `rg` call, and `find` over `/`, `~`, `~/Developer`, `~/Library`, `~/.pi`, or `~/.pi/agent` (without `-maxdepth` 2 or less) to `fd -HI`. The result starts with a note that names the command that ran. Calls it cannot translate safely (`find -prune`/`-o`/`-exec`, `grep -f`) are blocked with a reason. 0.1–0.3 s instead of 14–120+ s |
 
 The cmux and nvim extensions do nothing outside cmux or without nvim.
 
@@ -101,7 +104,6 @@ The cmux and nvim extensions do nothing outside cmux or without nvim.
 | pi-mcp-adapter | MCP servers from `~/.pi/agent/mcp-adapter.json` (context7 and GitHub by default) |
 | context-mode | Sandboxed command runs; large output is indexed instead of filling context |
 | @samfp/pi-memory | Persistent facts and lessons across sessions |
-| pi-smart-fetch | `web_fetch` and `batch_web_fetch` with browser-grade TLS |
 | @juicesharp/rpiv-ask-user-question | `ask_user_question` tool with typed options |
 | pi-agent-browser-native | Browser automation |
 | pi-excalidraw | Excalidraw canvas tools |
@@ -111,7 +113,6 @@ The cmux and nvim extensions do nothing outside cmux or without nvim.
 | pi-tutor | `/tutor`: hint-first coding tutor that remembers topics |
 | [pi-desk](https://github.com/gosvig123/pi-desk) | `/desk`: conversations, tasks, Tick results |
 | [pi-tick](https://github.com/gosvig123/pi-tick/tree/pi-agent-kit) | Scheduled agent jobs (fork branch `pi-agent-kit`) |
-| aidlc (team only) | AI-DLC lifecycle skills: Intent, Plan, Build, Verify, Learn. Needs read access to `remotely-works/aidlc` |
 
 Remove any package with `pi remove <source>`.
 
@@ -140,12 +141,12 @@ customCommands:
 
 ## One setup for everyone
 
-`install.sh` is the single package list. To add or remove a package, change the `PACKAGES` or `TEAM_PACKAGES` list, run `./install.sh` (or `pi remove <source>`), then commit and push. Everyone who runs `./install.sh` again gets the same setup.
+`install.sh` is the single package list. To add or remove a package, change the `PACKAGES` list, run `./install.sh` (or `pi remove <source>`), then commit and push. Everyone who runs `./install.sh` again gets the same setup.
 
 Keep personal values out of this repository: provider and model choice, credentials, and private MCP servers belong in your own `~/.pi/agent/settings.json` and `~/.pi/agent/mcp-adapter.json`.
 
 ## Notes
 
 - npm 11 prints `install-scripts ... not yet covered by allowScripts` for `better-sqlite3` and `context-mode`. The scripts still run; the native SQLite module builds and loads.
-- Pi warns at startup that `pi-smart-fetch` lists host packages as dependencies. This is an upstream packaging issue; the extension still loads.
+- Web pages come from context-mode's `ctx_fetch_and_index` (plain HTTP). Sites behind Cloudflare or bot checks (openai.com, npmjs.com, Zendesk help centers, LinkedIn, Medium) return 403 or a challenge page; open those with the browser tool set.
 - `skills/archify` and `skills/frontend-design` keep their own licenses.

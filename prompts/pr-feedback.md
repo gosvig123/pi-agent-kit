@@ -21,7 +21,7 @@ This prompt is approval to push fix commits to the PR branch, reply on review th
 ## 1. Request and wait
 
 - Get `owner/repo`, head branch, and head SHA: `gh pr view $1 --json headRefName,headRefOid,url,reviewRequests,reviews`.
-- If the repo rules say Copilot reviews every PR (`AGENTS.md`, `docs/`), and the PR has no Copilot review or request, run `gh pr edit $1 --add-reviewer @copilot`.
+- If the repo rules say Copilot reviews every PR (`AGENTS.md`, `docs/`), and the PR has no Copilot review or request, run `gh pr edit $1 --add-reviewer @copilot`. Check that it registered: `gh api repos/OWNER/REPO/issues/$1/timeline --jq '.[]|select(.event=="review_requested")|.requested_reviewer.login'` must list `Copilot`. If it does not (seen once: both `gh pr edit` and the REST `requested_reviewers` call returned success but did nothing), do not wait for Copilot. Report that the user must request it in the GitHub UI.
 - Wait in one bounded loop (20 min). Run it alone, not in a batch with quick calls. Exit when no review-bot check is pending and no bot review request is open:
 
 ```bash

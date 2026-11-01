@@ -3,9 +3,6 @@
   "extensions": [
     "-builtin:mcp"
   ],
-  "smartFetchDefaultMaxChars": 12000,
-  "smartFetchDefaultBatchConcurrency": 4,
-  "smartFetchDefaultRemoveImages": true,
   "skills": [
     "-~/.agents/skills/hyperframes",
     "-~/.agents/skills/hyperframes-animation",

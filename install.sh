@@ -12,7 +12,6 @@ PACKAGES=(
   "npm:pi-mcp-adapter"                             # MCP servers from mcp-adapter.json
   "npm:context-mode"                               # sandboxed commands and indexed large output
   "npm:@samfp/pi-memory"                           # persistent facts and lessons
-  "npm:pi-smart-fetch"                             # web_fetch / batch_web_fetch
   "npm:@juicesharp/rpiv-ask-user-question"         # ask_user_question tool
   "npm:pi-agent-browser-native"                    # browser automation (needs agent-browser)
   "npm:pi-excalidraw"                              # Excalidraw canvas and diagram tools
@@ -34,18 +33,6 @@ fail() {
 command -v pi >/dev/null || fail "pi is not on PATH" "install Pi first, then run ./install.sh again"
 command -v node >/dev/null || fail "node is not on PATH" "install Node.js 24.21 or newer"
 mkdir -p "$AGENT_DIR"
-
-# Team-only packages: installed when your git login can read the repository, skipped otherwise.
-TEAM_PACKAGES=(
-  "git:github.com/remotely-works/aidlc"           # AI-DLC lifecycle skills (Remotely org members)
-)
-for source in "${TEAM_PACKAGES[@]}"; do
-  if GIT_TERMINAL_PROMPT=0 git ls-remote -q "https://${source#git:}" HEAD >/dev/null 2>&1; then
-    PACKAGES+=("$source")
-  else
-    echo "==> skipped $source (no access with your git login)"
-  fi
-done
 
 # Prints "local" when settings.json already loads a local clone of this git repository.
 # Maintainers keep editable clones (for example ~/.pi/agent/local/pi-desk); installing the git copy too would load it twice.

@@ -6,16 +6,30 @@ import { getPackageDir, SettingsManager } from "@earendil-works/pi-coding-agent"
 import { Marked, type Token } from "@earendil-works/pi-tui";
 
 // Pi's built-in Mermaid transformer shows the raw source, with no message, when
-// the art is wider than the message area. A left-to-right flowchart with 5+ nodes
-// is often 200+ columns wide. This transformer runs after the built-in one. For a
-// Mermaid block that is still raw, it tries the other flowchart direction. If that
-// fits, it draws the diagram. If not, it adds one line that gives the needed width.
+// the art is wider than the message area or the parser drops some source. A
+// left-to-right flowchart with 5+ nodes is often 200+ columns wide, and an
+// unquoted `;` in a label ends the statement. This transformer runs after the
+// built-in one. For a Mermaid block that is still raw, it quotes labels that
+// have a `;` and tries the other flowchart direction. If that draws cleanly and
+// fits, it draws the diagram. If not, it adds one line that gives the reason.
 
 type Cls = "border" | "text" | "edge" | "edgeLabel" | "title" | "none";
 type Art = { width: number; plain: string[]; styled: { cls: Cls; text: string }[][]; warnings: string[] };
 type Render = (src: string) => Art | null;
 
 const HEADER = /^(\s*(?:flowchart|graph))(?:[ \t]+(LR|RL|TD|TB|BT)\b)?/m;
+const NODE_SEMICOLON = /(\b[\w-]+)([[({])(?!")([^\n"[\](){}|]*;[^\n"[\](){}|]*)([\])}])/g;
+const EDGE_SEMICOLON = /(?<=[->=])\|(?!")([^\n"|]*;[^\n"|]*)\|/g;
+const CLOSE = { "[": "]", "(": ")", "{": "}" } as Record<string, string>;
+
+// Put a node or edge label that has a `;` in double quotes: `R[a; b]` → `R["a; b"]`.
+function quoteSemicolons(src: string): string {
+	return src
+		.replace(NODE_SEMICOLON, (match, id, open, text, close) =>
+			CLOSE[open] === close ? `${id}${open}"${text}"${close}` : match,
+		)
+		.replace(EDGE_SEMICOLON, '|"$1"|');
+}
 const markdownParser = new Marked();
 
 function isMermaid(token: Token): token is Token & { text: string; raw: string } {
@@ -78,11 +92,16 @@ export default async function mermaidFit(pi: ExtensionAPI) {
 			.map((token) => {
 				if (!isMermaid(token)) return token.raw;
 				const width = context.availableWidth;
-				const art = render(token.text);
-				// Not too wide: the built-in transformer already drew it or explained why not.
-				if (!art || art.width <= width) return token.raw;
+				const quoted = quoteSemicolons(token.text);
+				const art = render(quoted);
+				if (!art) return token.raw;
+				if (art.width <= width) {
+					// Clean source: the built-in transformer already drew it or explained why not.
+					if (quoted === token.text || art.warnings.length > 0) return token.raw;
+					return `${themedLines(art, theme).map(codeSpan).join("  \n")}\n`;
+				}
 
-				const swapped = otherDirection(token.text);
+				const swapped = otherDirection(quoted);
 				const alt = swapped ? render(swapped) : null;
 				if (alt && alt.width <= width && (context.isStreaming || alt.warnings.length === 0)) {
 					return `${themedLines(alt, theme).map(codeSpan).join("  \n")}\n`;

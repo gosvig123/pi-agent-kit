@@ -39,7 +39,7 @@ The Pi terminal renders these natively. Use them when a visual makes a non-trivi
 
 - Markdown: tables, highlighted code blocks, links, and LaTeX math (as Unicode).
 - Fenced `mermaid` blocks render as Unicode box diagrams: `flowchart`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`. Other types, diagrams wider than the terminal, and diagrams in thinking show as source. Keep diagrams under ~100 columns: use `TD` for more than 4 nodes and short labels.
-- Pi shows the source for any grok-mermaid warning, not only for width. Put flowchart edge labels in pipes (`A -.->|text| B`), never inline (`A -. "text" .-> B`): a `<` or `>` in an inline label drops the edge. `<br/>` does not break lines; node text wraps at 24 columns (4 lines, then `…`), and edge labels are cut at 28 characters.
+- Pi shows the source for any grok-mermaid warning, not only for width. Put flowchart edge labels in pipes (`A -.->|text| B`), never inline (`A -. "text" .-> B`): a `<` or `>` in an inline label drops the edge. An unquoted `;` ends the statement, so put node text that has `;` in double quotes: `D["a; b"]`. `<br/>` does not break lines; node text wraps at 24 columns (4 lines, then `…`), and edge labels are cut at 28 characters.
 - Inline images from tool results: `read` a PNG or call `excalidraw_capture_screenshot`.
 - For an editable canvas, run `load_toolset` `excalidraw`, use sans-serif text (`fontFamily: 2`), and check a screenshot before you show it.
 - For a standalone diagram file to share, use the `archify` skill.
@@ -124,8 +124,13 @@ Stop and send a completion report on:
 ## Tool Notes
 
 - context-mode blocks `curl`/`wget` in `bash` unless the call is silent and writes to a file (`curl -s -o /tmp/x.json URL`). Run HTTP calls that pipe or print output in `ctx_execute` with `language: shell`.
-- `ctx_execute`/`ctx_batch_execute` shell code runs in `/bin/bash` 3.2. No `mapfile`, `declare -A`, or `${var,,}`.
+- `ctx_execute`/`ctx_batch_execute` shell code runs in `/bin/bash` 3.2. No `mapfile`, `declare -A`, or `${var,,}`. A `ctx_batch_execute` command that starts with `for`, `while`, or `if` fails (context-mode puts `NODE_OPTIONS=…` before it); start it with `cd . &&`.
+- `ctx_*` calls with no `timeout` stop after 120 s (`pi-agent-kit/extensions/ctx-timeout.ts`). Pass a larger `timeout` for long builds.
+- Search file contents with `rg`, not `grep -r`, in one repo or folder. Never search all of `~/Developer` (43 GB), `~`, or `~/.pi/agent` (5.4 GB). `rg` skips `.gitignore` paths (`node_modules`, `dist`, `sessions`); add `-uu` only to search them, and treat "no match" without `-uu` as "not in tracked source". Find files by name with `fd`. Find past conversations with `session_lookup` or `hindsight`, not by searching `~/.pi/agent/sessions`. The `slow-search-guard` extension rewrites `grep -r` to `rg`, and `find` over `/`, `~`, `~/Developer`, `~/Library`, `~/.pi`, or `~/.pi/agent` to `fd -HI`; a result that starts with `[slow-search-guard]` came from the rewritten command.
+- Pi returns a parallel tool batch only when its slowest call ends. Do not put a long wait (CI watch, poll loop) in the same batch as quick calls: a `git push` result waited 15 min for a Railway poll.
 - To wait for CI, use `gh pr checks <pr> --watch` or `gh run watch <id>`. To wait for a process or log, run a bounded loop that exits on the condition (`until <check>; do sleep 10; done` with a timeout). Do not chain fixed `sleep` calls.
+- `ctx_fetch_and_index` uses plain HTTP. When a page returns 403 or a bot-check page (Cloudflare, Zendesk help centers, openai.com, npmjs.com, LinkedIn), load the `browser` tool set and read the page with `agent_browser`.
+- To test a child Pi from `ctx_execute`, run `env -u CONTEXT_MODE_BRIDGE_DEPTH pi -p …`. The context-mode server sets that variable, and a child that inherits it skips its `ctx_*` tools (recursion guard).
 - `agent_browser` `eval`: top-level `await` fails. Use `(async () => { …; return value; })()`. Before `fetch` in `eval`, run `get url`: on `about:blank` or another origin, `open` the app first and use absolute URLs.
 - `agent_browser_code` allows 25 browser calls per run. For loops over many items, do the loop inside one `eval`, or split the work into several runs.
 - After an `agent_browser` watchdog timeout, do not repeat the same call. Use a condition `wait`, split the work, or pass a higher `timeoutMs`.
