@@ -125,9 +125,14 @@ export default function toolsets(pi: ExtensionAPI) {
 			for (const [name, set] of Object.entries(TOOLSETS)) if (set.keywords.test(event.prompt)) load(name, "prompt keywords");
 		}
 		park(); // other extensions may have re-activated parked tools
+		const options = event.systemPromptOptions;
+		// pi-subagents (0.86.0) pushes subagents_enable into selectedTools. Pi then treats that list as an
+		// explicit edit and drops every setActiveTools() change made in this hook, including tools loaded
+		// here and tools that context-mode registers late (agent-session.js _prepareRun). Write the live
+		// loadout back into the list so the declared tools match it. pi-agent-kit loads after pi-subagents.
+		options.selectedTools?.splice(0, options.selectedTools.length, ...pi.getActiveTools());
 		for (const [name, set] of Object.entries(TOOLSETS)) {
 			if (loaded.has(name)) continue;
-			const options = event.systemPromptOptions;
 			for (const section of set.sections) delete (options.sections as Record<string, unknown>)[section];
 			if (set.skills && options.skills) options.skills = options.skills.filter((skill) => !set.skills!.test(skill.name));
 		}
