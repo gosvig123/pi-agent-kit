@@ -47,14 +47,18 @@ Required in every PR body, right after **Why**. GitHub renders `mermaid` code bl
 2. Pick the type by what changed:
    | Change | Diagram |
    |---|---|
-   | Data flow, request path, or pipeline | `flowchart LR` with old and new paths, in `subgraph Before` and `subgraph After` when both exist |
+   | Data flow, request path, or pipeline | `flowchart` (`LR` for up to 5 nodes, else `TD`; see step 3) with old and new paths, in `subgraph Before` and `subgraph After` when both exist |
    | Calls between services or components in order | `sequenceDiagram` |
    | Schema or data model | `erDiagram` with the changed tables |
    | State or lifecycle | `stateDiagram-v2` |
    | UI change | `flowchart` of what the user does and sees: screen → action → result |
-3. Keep it to about 15 nodes. Mark new or changed nodes with `:::new` and add `classDef new fill:#e8f5e9,stroke:#2e7d32`. Put numbers from validation on edges when they matter ("22 s → 300 ms").
-4. One line under the block says what to read in it, such as "New path in green; the old join is gone."
-5. After the PR is created, open it with `agent_browser` and confirm that the diagram renders (no "Unable to render rich display"). Fix the syntax and edit the body if it does not. Quote labels that contain punctuation: `A["parseSearch()"]`.
+3. Make it readable at GitHub's size. GitHub scales the whole diagram down to the body width (about 780 px on desktop, less on narrow screens), and pan and zoom buttons cover its right edge:
+   - At most 5 nodes in a row. For a longer chain, use `flowchart TD` with `subgraph` rows that set `direction LR`.
+   - Node labels of 1–3 words, such as the function or table name. Explain the steps in the line under the block, not in the nodes.
+   - About 10 nodes in total.
+4. Mark new or changed nodes with a border only: `classDef new stroke:#2da44e,stroke-width:3px`. Never set `fill` without `color`: GitHub shows the diagram in the reader's theme, and in dark mode a light fill gets light text and becomes unreadable. Do not set `%%{init}%%` themes; GitHub picks the theme.
+5. One line under the block says what to read in it, such as "New steps have a green border." Put numbers from validation there or in the body, not in edge labels.
+6. After the PR is created, check how the diagram looks in a real browser. The Markdown API (`gh api /markdown`) proves only that the block parses. For a private repository, use the `logged-in-chrome` skill (a signed-out browser gets "Page not found"). Take a screenshot of the diagram with `set media dark`, and again with `set media light`. Pass only when every label is readable in both and the zoom buttons cover no node. If it fails, shorten labels or split rows, run `gh pr edit <n> --body-file`, and check again. Quote labels that contain punctuation: `A["parseSearch()"]`.
 
 The diagram does not replace the Why or the screenshots: a reader must understand why the change exists from the Why alone.
 
