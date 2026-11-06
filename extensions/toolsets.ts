@@ -76,7 +76,8 @@ if (process.env.T3_MCP_URL && process.env.PI_SUBAGENT_CHILD !== "1") {
 		summary: "pi-subagents: subagent, subagent_supervisor, contact_supervisor (in T3 Code use delegate_task instead)",
 		tools: /^(subagent|subagents_enable|subagent_supervisor|contact_supervisor)$/,
 		sections: [],
-		keywords: /\b(pi-subagents|review-fanout|subagent_supervisor)\b/i,
+		// Gmail, Calendar, and Slack reads go through the codex-exec subagent, so those words load it too.
+		keywords: /\b(pi-subagents|review-fanout|subagent_supervisor|subagents?|codex-exec|gmail|inbox|e-?mails?|calendar|agenda|slack)\b/i,
 	};
 }
 const ENTRY_TYPE = "toolset-load";
