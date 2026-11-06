@@ -43,23 +43,11 @@ const TOOLSETS: Record<string, Toolset> = {
 		sections: ["agent_browser"],
 		keywords: /\b(browser|website|web ?page|screenshots?|click|log(ged)?[- ]?in|sign(ed)?[- ]in|gmail|inbox|hubspot|clay|n8n|whatsapp|linkedin|chrome|scrape|playwright)\b|agent_browser/i,
 	},
-	excalidraw: {
-		summary: "Excalidraw canvas: diagrams, nodes, panels, screenshots of the canvas",
-		tools: /^excalidraw_/,
-		sections: [],
-		keywords: /\b(excalidraw|diagrams?|whiteboard|canvas)\b/i,
-	},
 	tasks: {
 		summary: "tasks-go task lists: view, create, update, complete, and delete tasks and subtasks",
 		tools: /^tasks_/,
 		sections: [],
 		keywords: /\b(task ?lists?|to-?dos?|subtasks?|my tasks|today'?s? (list|tasks)|tasks-go)\b/i,
-	},
-	cmux: {
-		summary: "cmux panes: open a browser or terminal split, start another Pi session, annotate a browser",
-		tools: /^cmux_/,
-		sections: [],
-		keywords: /\b(cmux|split pane|new pane|right pane|new (cmux )?(tab|workspace)|open (a )?terminal|hand ?off)\b/i,
 	},
 	"ctx-admin": {
 		summary: "context-mode maintenance: ctx_stats, ctx_doctor, ctx_upgrade, ctx_purge",

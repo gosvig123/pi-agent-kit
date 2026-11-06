@@ -45,7 +45,7 @@ Use Accessibility for native parts (menu bar, tray, permission dialogs).
 
 | Error | Cause | Recovery |
 |---|---|---|
-| `osascript is not allowed assistive access` | The terminal host (cmux, Terminal, Pi host) has no Accessibility permission | Ask the user to enable it in System Settings → Privacy & Security → Accessibility, then restart the host. Do not try to get around TCC. |
+| `osascript is not allowed assistive access` | The host app (T3 Code, Terminal, or the app that runs Pi) has no Accessibility permission | Ask the user to enable it in System Settings → Privacy & Security → Accessibility, then restart the host. Do not try to get around TCC. |
 | `Can't get window 1 … Invalid index` | The app has no window yet, or it is a menu bar app | Wait and run `windows` again; for menu bar apps, click `menu bar item 1 of menu bar 2` first. |
 | `could not create image from window` | Stale window id, window off-screen, or no Screen Recording permission | Get the id again with `window-id.swift`; if titles are empty, ask the user to grant Screen Recording to the host. |
 | `window-id.swift` shows empty titles | No Screen Recording permission | Select by owner and size, or ask for the permission. |

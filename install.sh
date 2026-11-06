@@ -14,13 +14,7 @@ PACKAGES=(
   "npm:@samfp/pi-memory"                           # persistent facts and lessons
   "npm:@juicesharp/rpiv-ask-user-question"         # ask_user_question tool
   "npm:pi-agent-browser-native"                    # browser automation (needs agent-browser)
-  "npm:pi-excalidraw"                              # Excalidraw canvas and diagram tools
   "npm:pi-claude-bridge"                           # Claude subscription provider
-  "npm:pi-lazygit"                                 # lazygit inside Pi
-  "npm:pi-cmux"                                    # cmux chats, splits, tools, browser, worktree handoffs
-  "npm:pi-tutor"                                   # tutor mode
-  "https://github.com/carderne/pi-nvim"            # nvim integration
-  "git:github.com/gosvig123/pi-desk"               # /desk: conversations and tasks
 )
 
 fail() {
@@ -34,7 +28,7 @@ command -v node >/dev/null || fail "node is not on PATH" "install Node.js 24.21 
 mkdir -p "$AGENT_DIR"
 
 # Prints "local" when settings.json already loads a local clone of this git repository.
-# Maintainers keep editable clones (for example ~/.pi/agent/local/pi-desk); installing the git copy too would load it twice.
+# Maintainers keep editable clones (for example ~/.pi/agent/local/pi-agent-kit); installing the git copy too would load it twice.
 loaded_locally() {
   node - "$AGENT_DIR/settings.json" "$1" <<'EOF'
 const fs = require("node:fs");
@@ -85,4 +79,4 @@ console.log(`==> settings.json: ${added.length ? "added " + added.join(", ") : "
 EOF
 
 echo
-echo "Done. Restart Pi. Optional steps are in README.md (models, agent-browser, tasks-go, cmux)."
+echo "Done. Restart Pi. Optional steps are in README.md (models, agent-browser)."

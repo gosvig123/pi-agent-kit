@@ -14,7 +14,7 @@ cd pi-agent-kit
 
 The installer:
 
-1. Runs `pi install` for this kit and each companion package (see [Packages](#packages)). Team-only packages install only when your git login can read them; otherwise the installer prints `skipped`. If a package is already loaded from a local clone with the same repository name (for example `~/.pi/agent/local/pi-desk`), the installer keeps the clone and does not install a second copy.
+1. Runs `pi install` for this kit and each companion package (see [Packages](#packages)). Team-only packages install only when your git login can read them; otherwise the installer prints `skipped`. If a package is already loaded from a local clone with the same repository name (for example `~/.pi/agent/local/pi-agent-kit`), the installer keeps the clone and does not install a second copy.
 2. Copies `AGENTS.md`, the subagent timeout config, and `config/mcp-adapter.json` into `~/.pi/agent`. It never overwrites a file that exists; it prints the path so you can merge by hand.
 3. Adds the keys in `config/settings.defaults.json` to `~/.pi/agent/settings.json` only when they are not set.
 
@@ -76,18 +76,10 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 | better-web-search | `better_web_search` tool. Uses the Codex CLI login, or `BRAVE_SEARCH_API_KEY` / `TAVILY_API_KEY` |
 | checkpoint-nudge | After long runs without user input, reminds the agent of the `AGENTS.md` larger-work check |
 | self-heal | Groups failed tool results into one recovery message and allows one safe retry |
-| hunk-inline | Shows `edit` results as compact diffs and `write` results as compact summaries; uses Pi's renderer hook without replacing tool execution, so it can load with pi-cmux's remote tools |
-| mermaid-fit | When a Mermaid flowchart is too wide for the terminal, draws it in the other direction (`LR` ↔ `TD`). If it still does not fit, adds a line that gives the needed width instead of showing only the source |
-| file-preview | Click file links in the transcript to open them in nvim; Alt+O quick open |
-| right-column | Shared right-side column that the pi-desk task panel uses |
-| cmux-needs-input | Sends a cmux notification when `ask_user_question` waits for you |
-| prompt-pin | Pins the first prompt of the session above the editor, with the count of later prompts. Ctrl+Shift+P or `/trail` expands it to the first prompt in full and the last 8 later prompts |
-| subright | `/subright` opens the current Pi branch in a new cmux pane on the right |
-| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), excalidraw, tasks, cmux, ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`), sessions (`session_lookup`), background (`bg_wait`), and, in T3 Code top-level sessions only, subagents (`subagent`, `subagent_supervisor`, `contact_supervisor`; T3 `delegate_task` replaces them). It also gives the context-mode tools short descriptions through the `load_toolset` `prepareLoadout` hook. A set loads when the prompt names it (for example "browser", "diagram", "cron", "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. Under claude-bridge, a `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
+| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), tasks, ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`), sessions (`session_lookup`), background (`bg_wait`), and, in T3 Code top-level sessions only, subagents (`subagent`, `subagent_supervisor`, `contact_supervisor`; T3 `delegate_task` replaces them). It also gives the context-mode tools short descriptions through the `load_toolset` `prepareLoadout` hook. A set loads when the prompt names it (for example "browser" or "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. Under claude-bridge, a `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
 | output-spill | Saves `bash`, `gappd_query`, and `ctx_batch` results over 8 KB to `~/.pi/agent/tmp/tool-output/<session>/` and gives the model the head, the tail, and the path. Files older than 7 days are deleted |
+| session-lookup | `session_lookup` tool: finds earlier Pi conversations (terminal and T3 Code threads) by topic, folder, and date. Summaries are cached in `~/.pi/agent/pisesh-search-index.json`; titles saved by the retired pi-desk still show |
 | slow-search-guard | In `bash`, `ctx_execute` shell, and `ctx_batch`, rewrites `grep -r` to an equivalent `rg` call, and `find` over `/`, `~`, `~/Developer`, `~/Library`, `~/.pi`, or `~/.pi/agent` (without `-maxdepth` 2 or less) to `fd -HI`. The result starts with a note that names the command that ran. Calls it cannot translate safely (`find -prune`/`-o`/`-exec`, `grep -f`) are blocked with a reason. 0.1–0.3 s instead of 14–120+ s |
-
-The cmux and nvim extensions do nothing outside cmux or without nvim.
 
 `config/settings.defaults.json` also keeps new sessions small: it excludes skills that are rarely used in Pi (Hyperframes engine skills, figma, media-use, claude-design, ctx-* commands), and compacts claude-bridge Opus at about 200k instead of near its 1M window. A new claude-bridge session starts at about 26k tokens.
 
@@ -105,12 +97,7 @@ The cmux and nvim extensions do nothing outside cmux or without nvim.
 | @samfp/pi-memory | Persistent facts and lessons across sessions |
 | @juicesharp/rpiv-ask-user-question | `ask_user_question` tool with typed options |
 | pi-agent-browser-native | Browser automation |
-| pi-excalidraw | Excalidraw canvas tools |
 | pi-claude-bridge | Use a Claude subscription as a Pi provider |
-| pi-lazygit, pi-nvim | lazygit and nvim inside Pi |
-| pi-cmux | In cmux: new Pi chats (`/cmn`), splits (`/cmv`, `/cmh`), tool tabs (`/cmo`, `/cmt`), browser split with notes (`/cmb`), worktree handoffs (`/cmcv -c`), sidebar progress. The agent can do the same on request |
-| pi-tutor | `/tutor`: hint-first coding tutor that remembers topics |
-| [pi-desk](https://github.com/gosvig123/pi-desk) | `/desk`: conversations and tasks |
 
 Remove any package with `pi remove <source>`.
 
@@ -119,10 +106,6 @@ Remove any package with `pi remove <source>`.
 **Models.** Pick your provider and model in Pi (`/model`). `config/subagent-models.example.json` shows per-subagent model overrides; copy the `subagents` block into `settings.json` if you use the same providers. `config/models.opencode-go.json` adds an OpenCode Go provider that reads its key from OpenCode's local login; merge it into `~/.pi/agent/models.json` only if you use OpenCode Go.
 
 **Browser automation.** `brew install agent-browser` (0.35 or newer).
-
-**Desk tasks.** The pi-desk task panel reads task lists from [tasks-go](https://github.com/gosvig123/tasks-go).
-
-**cmux.** In cmux, run `cmux hooks pi install` to add cmux's own Pi session bridge.
 
 **Updates.** `bin/pi-up` updates Pi and every package, then starts Pi once in print mode to prove all extensions load. It handles both installs: Pi in a private npm prefix (it relinks `pi` when another package ships an old `pi` bin) and a global npm install. `pi-up --host <ssh-host>` does the same on another machine; the host needs only Pi. Put it on PATH (`ln -s "$PWD/bin/pi-up" ~/.local/bin/pi-up`), and schedule it weekly with T3 Code `schedule_task` if you want automatic updates. Exit code 1 means a machine failed; the output names the extension or login that broke.
 

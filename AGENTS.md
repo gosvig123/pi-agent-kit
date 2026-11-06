@@ -24,10 +24,10 @@ Choose the visual by content:
 | Status | One symbol: ✅ done · ⛔ blocked · ⚠️ budget, drift, or surprise |
 | Files changed | Table: `path:line` · change |
 | Options or tradeoffs | Table, recommended row first, marked ★ |
-| Process, cause chain, data flow | Text flow: `A → B → C`; a `mermaid` block when it branches |
+| Process, cause chain, data flow | Text flow: `A → B → C`; an `html_render` diagram when it branches |
 | Rows of values in columns (scores, metrics, counts, comparisons) | Table with a header row, even when it comes from command output; put the command above it in inline code |
 | Evidence | Short code block with the real output, unless it is rows of values in columns |
-| Architecture, sequence, state, data model | `mermaid` block |
+| Architecture, sequence, state, data model | `html_render` diagram |
 
 - One visual per idea. No decoration. No table for one row.
 - Use prose only for what a visual cannot carry: why, and what next.
@@ -37,16 +37,7 @@ Choose the visual by content:
 
 ### Visuals
 
-The host is T3 Code when the system prompt has a `t3_code_orchestration` section; otherwise it is the Pi terminal. T3 Code renders Markdown tables and code, but not `mermaid` or LaTeX: there, use a text flow or a table, and pass a diagram or chart as HTML to `html_preview`, then `html_render`. The rest of this section is for the Pi terminal.
-
-The Pi terminal renders these natively. Use them when a visual makes a non-trivial answer clearer:
-
-- Markdown: tables, highlighted code blocks, links, and LaTeX math (as Unicode).
-- Fenced `mermaid` blocks render as Unicode box diagrams: `flowchart`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`. Other types, diagrams wider than the terminal, and diagrams in thinking show as source. Keep diagrams under ~100 columns: use `TD` for more than 4 nodes and short labels.
-- Pi shows the source for any grok-mermaid warning, not only for width. Put flowchart edge labels in pipes (`A -.->|text| B`), never inline (`A -. "text" .-> B`): a `<` or `>` in an inline label drops the edge. An unquoted `;` ends the statement, so put node text that has `;` in double quotes: `D["a; b"]`. `<br/>` does not break lines; node text wraps at 24 columns (4 lines, then `…`), and edge labels are cut at 28 characters.
-- Inline images from tool results: `read` a PNG or call `excalidraw_capture_screenshot`.
-- For an editable canvas, run `load_toolset` `excalidraw`, use sans-serif text (`fontFamily: 2`), and check a screenshot before you show it.
-- For a standalone diagram file to share, use the `archify` skill.
+T3 Code renders Markdown tables, code blocks, and links, but not `mermaid` or LaTeX. For a diagram or chart, pass its HTML to `html_preview`, then `html_render`. For a standalone diagram file to share, use the `archify` skill. To show an image from a tool result, `read` the PNG.
 
 ### Completion Report
 
