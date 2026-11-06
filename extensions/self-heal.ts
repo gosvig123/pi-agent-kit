@@ -4,20 +4,6 @@ import {
   inputFingerprint, needsRecovery, noticeKey, uniqueFailures, type Failure, type RecoveryDetails,
 } from "../lib/self-heal-policy";
 
-const COMPLETE_EVENT = "subagent:async-complete";
-const ENTRY_TYPE = "self-heal-recovery";
-const GLOBAL_KEY = "__piSelfHealCleanup";
-// pi-subagents resumes workflows cut off by a Pi exit or reload, or its notice says how to resume by hand.
-const RESUMABLE_STOP_CAUSES = new Set(["owner-exited", "runtime-replaced"]);
-
-type Completion = {
-  runId?: string;
-  success?: boolean;
-  state?: string;
-  summary?: string;
-  workflow?: { stopCause?: string };
-  results?: Array<{ status?: string; success?: boolean; error?: string }>;
-};
 
 type ToolFailureEvent = {
   toolCallId: string;
@@ -28,20 +14,6 @@ type ToolFailureEvent = {
 
 function contentText(content: Array<{ type: string; text?: string }>): string {
   return content.flatMap((item) => item.type === "text" && item.text ? [item.text] : []).join("\n");
-}
-
-function completionFailed(event: Completion): boolean {
-  if (event.state === "stopped" || event.state === "paused") return false;
-  if (RESUMABLE_STOP_CAUSES.has(event.workflow?.stopCause ?? "")) return false;
-  if (event.success === false || event.state === "failed") return true;
-  return event.results?.some((item) => item.success === false || item.status === "failed") ?? false;
-}
-
-function completionText(event: Completion): string {
-  const failed = event.results?.filter((item) => item.success === false || item.status === "failed") ?? [];
-  const errors = failed.flatMap((item) => item.error ? [item.error] : []);
-  return [event.summary, ...errors].filter(Boolean).join("\n").slice(0, 4000)
-    || "Subagent reported a failed completion without error text.";
 }
 
 function targetText(input: Record<string, unknown>): string | undefined {
@@ -62,13 +34,6 @@ function toolFailure(event: ToolFailureEvent): Failure | undefined {
   });
 }
 
-function completionFailure(event: Completion): Failure | undefined {
-  return classifyFailure({
-    source: `subagent ${event.runId ?? "run"}`,
-    summary: completionText(event),
-  });
-}
-
 function restoredDetails(entries: unknown[]): RecoveryDetails[] {
   const records: RecoveryDetails[] = [];
   for (const value of entries) {
@@ -83,17 +48,12 @@ class SelfHealRuntime {
   private readonly ledger = new RetryLedger();
   private readonly seen = new Set<string>();
   private turnFailures: Failure[] = [];
-  private asyncFailures: Failure[] = [];
-  private asyncScheduled = false;
-  private unsubscribe = () => {};
 
   constructor(private readonly pi: ExtensionAPI) {}
 
-  start(): () => void {
-    this.unsubscribe = this.pi.events.on(COMPLETE_EVENT, (value) => this.onCompletion(value as Completion));
+  start(): void {
     this.bindTurnHooks();
-    this.bindSessionHooks();
-    return () => this.unsubscribe();
+    this.pi.on("session_start", (_event, ctx) => this.restore(ctx.sessionManager.getEntries()));
   }
 
   private emit(failures: Failure[], turnIndex?: number): void {
@@ -120,34 +80,10 @@ class SelfHealRuntime {
     this.pi.on("agent_end", () => this.flushTurn());
   }
 
-  private bindSessionHooks(): void {
-    this.pi.on("session_start", (_event, ctx) => this.restore(ctx.sessionManager.getEntries()));
-    this.pi.on("session_shutdown", () => this.unsubscribe());
-  }
-
   private flushTurn(turnIndex?: number): void {
     const failures = this.turnFailures;
     this.turnFailures = [];
     this.emit(failures, turnIndex);
-  }
-
-  private onCompletion(event: Completion): void {
-    const failure = completionFailed(event) ? completionFailure(event) : undefined;
-    if (failure) this.queueAsync(failure);
-  }
-
-  private queueAsync(failure: Failure): void {
-    this.asyncFailures.push(failure);
-    if (this.asyncScheduled) return;
-    this.asyncScheduled = true;
-    queueMicrotask(() => this.flushAsync());
-  }
-
-  private flushAsync(): void {
-    this.asyncScheduled = false;
-    const failures = this.asyncFailures;
-    this.asyncFailures = [];
-    this.emit(failures);
   }
 
   private restoreRecord(details: RecoveryDetails): void {
@@ -163,16 +99,11 @@ class SelfHealRuntime {
   private restore(entries: unknown[]): void {
     this.seen.clear();
     this.turnFailures = [];
-    this.asyncFailures = [];
-    this.asyncScheduled = false;
     this.ledger.reset();
     for (const details of restoredDetails(entries)) this.restoreRecord(details);
   }
 }
 
 export default function selfHeal(pi: ExtensionAPI): void {
-  const store = globalThis as Record<string, unknown>;
-  if (typeof store[GLOBAL_KEY] === "function") (store[GLOBAL_KEY] as () => void)();
-  const cleanup = new SelfHealRuntime(pi).start();
-  store[GLOBAL_KEY] = cleanup;
+  new SelfHealRuntime(pi).start();
 }

@@ -8,7 +8,6 @@ AGENT_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
 
 PACKAGES=(
   "git:github.com/gosvig123/pi-agent-kit"          # this kit: skills, prompts, extensions
-  "npm:pi-subagents"                               # subagents, workflows, parallel review
   "npm:pi-mcp-adapter"                             # MCP servers from mcp-adapter.json
   "npm:context-mode"                               # sandboxed commands and indexed large output
   "npm:@samfp/pi-memory"                           # persistent facts and lessons
@@ -62,7 +61,6 @@ copy_if_absent() {
 }
 
 copy_if_absent AGENTS.md AGENTS.md
-copy_if_absent config/subagent.json extensions/subagent/config.json
 copy_if_absent config/mcp-adapter.json mcp-adapter.json
 
 # Add kit defaults to settings.json only where the key is not set yet.

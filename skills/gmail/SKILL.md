@@ -22,7 +22,7 @@ If the account is unclear and the topic does not decide it, ask once.
 - Read the open message body from `.a3s` elements.
 - Attachments: fetch `https://mail.google.com/mail/u/0?ui=2&ik=<ik>&attid=0.1&th=<thread id>&view=att&zw&disp=safe` in the page with `credentials: "include"`, return base64, and save it with `outputPath` (no thread needs to be open; take `ik` from any attachment link on the page). Decode it into a new empty directory under `/tmp` and use `pdftotext -layout` for PDFs. Delete the files and the browser spill files when done.
 - Close the browser session when done.
-- Fallback for kristian@remotely.works only: the hosted Codex Gmail tools through the `codex-exec` subagent (`async: true`). They cannot reach leasemobil@gmail.com.
+- Fallback for kristian@remotely.works only: a Codex child with the hosted `mcp__codex_apps__gmail_*` tools, started as in the `google-calendar` skill. They cannot reach leasemobil@gmail.com.
 
 ## Write
 

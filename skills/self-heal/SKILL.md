@@ -1,6 +1,6 @@
 ---
 name: self-heal
-description: Diagnoses and conservatively recovers from Pi tool, extension, provider, and subagent failures. Use when an operation errors, a workflow step fails, Pi reports unavailable tools, or auto-heal requests recovery.
+description: Diagnoses and conservatively recovers from Pi tool, extension, provider, and child-task failures. Use when an operation errors, a workflow step fails, Pi reports unavailable tools, or auto-heal requests recovery.
 ---
 
 # Self Heal
@@ -11,7 +11,7 @@ Recover evidence-first. Preserve useful partial work. Never hide failure.
 
 1. Capture operation, target, exact error, structured details, and artifact/log/session paths.
 2. Classify: cancellation, expected miss, transient transport/startup, deterministic setup, partial success, or unsafe/unknown.
-3. Inspect status and artifacts before action. For subagents use `status`, transcript, `events.jsonl`, and saved output; never scrape rendered status text.
+3. Inspect status and artifacts before action. For a `delegate_task` child, read its result with `task_status` or `t3_thread_read`.
 4. Salvage valid output first. A failed lifecycle can still contain a usable artifact.
 5. Retry once only when operation is read-only/idempotent, no mutation evidence exists, cause is transient or repaired, and this failure signature has not retried.
 6. Use fresh rerun for read-only work. Use `resume` only with persisted child session and continuation prompt that forbids repeating completed mutations.

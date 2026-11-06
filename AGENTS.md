@@ -87,7 +87,7 @@ Work is large when it spans more than one component, needs more than ~5 file edi
 
 Between slices, do not ask. Write one line: `✅ Slice 2/4 — <evidence> — next: <slice>`.
 
-After the last slice, run a review loop before you report Done. Follow `/review-loop` (`pi-subagents/prompts/review-loop.md`): fresh-context `reviewer` agents in parallel, then one fix `worker` for the accepted P0/P1 findings, at most 3 rounds. In T3 Code, start each reviewer with `delegate_task` (`role: "review"`), and fix small accepted findings yourself. This rule is approval to start these subagents. Done needs a clean review: no P0, and no P1 fix worth doing now. Put the rounds, fixes, and deferred findings in the completion report. When the work is on a PR, push the clean result, then run `/pr-feedback` before you report Done.
+After the last slice, run a review loop before you report Done. Each round, start 2–3 fresh-context reviewers in parallel with `delegate_task` (`role: "review"`, `mode: "async"`). Give each reviewer one angle chosen from the change: correctness, simplicity, tests, security, or docs. Reviewers report only concrete issues that the diff causes, each with `file:line`, proof, and a P0/P1/P2 label. Fix small accepted findings yourself; give larger ones to one `delegate_task` with `role: "implementation"`. Run at most 3 rounds. This rule is approval to start these children. Done needs a clean review: no P0, and no P1 fix worth doing now. Put the rounds, fixes, and deferred findings in the completion report. When the work is on a PR, push the clean result, then run `/pr-feedback` before you report Done.
 
 Write and update every PR body with the `pr-description` skill; read it before `gh pr create`, even when the body seems simple. Merge a PR that changes what users see only when its body has the before and after screenshots. A request to merge does not waive them; if you cannot capture them, stop and ask.
 
@@ -109,22 +109,16 @@ Stop and send a completion report on:
 
 ## Subagents
 
-Children cannot see this conversation. Most child questions ask for an input that the parent already has. Send the input at launch.
-
-In T3 Code, start children with `delegate_task` and follow the `t3_code_orchestration` rules; the `subagent`, `review-fanout.js`, and `subagent_supervisor` lines below are for the Pi terminal. In T3 Code these tools are parked; run `load_toolset` `subagents` only when the user asks for pi-subagents. The evidence pack applies in both hosts.
+Start children with `delegate_task` and follow the `t3_code_orchestration` rules. Children cannot see this conversation. Most child questions ask for an input that the parent already has. Send the input at launch.
 
 - Before you start children, make an evidence pack in `/tmp/brief-<slug>/`. Delete it after the results arrive.
   - `context.md`: the goal and why; decisions already made (do not reopen them); invariants that define a pass, as testable statements ("if the label step fails, return the text without labels"); out of scope.
   - Open decisions: if a decision can change the verdict, get it from the user before launch. For each other open decision, write the assumption to use.
-  - `range.diff` and `snapshot/`: the changed files and their direct callers. `reviewer` cannot run git. For committed code (a commit, a range, or a PR), run `git diff <base> <head> > range.diff` and `git archive <head> <paths> | tar -x -C snapshot`. Make sure that `range.diff` is not empty: a symlinked file belongs to the repo of its target.
-  - `checks.txt`: the real output of the tests, build, lint, and repro commands that the children need. `reviewer` has no shell, so run these commands first.
+  - `range.diff`: for committed code (a commit, a range, or a PR), run `git diff <base> <head> > range.diff`. Make sure that it is not empty: a symlinked file belongs to the repo of its target.
+  - `checks.txt`: the real output of the tests, build, lint, and repro commands that the children need, so that each child does not run them again.
   - Any PR body, issue text, or API response that the child must read.
 - In each brief, send only what is different for that child: `Read /tmp/brief-<slug>/context.md first.`, then its angle, its part of the code, what the other children cover, `cwd`, and the output. Do not paste the shared context into each brief.
-- Answer the likely questions in the brief: "If X is missing, assume Y and record it in `assumptions`. Contact the supervisor only for Z." Z is a decision that changes the verdict or the scope.
-- Start parallel reviewers with `subagent({ workflow: "/Users/krisitan/.pi/agent/workflows/review-fanout.js", async: true, args: { tasks: [{ task, cwd }] } })` (the path does not expand `~`). Each reviewer returns findings that follow one schema. The script lists all findings, sorted by severity and `file:line`, with the reviewer that found each one. Send the accepted findings to the fix `worker` as a list. Read `missingInputs` to improve the next pack.
-- Native completion wakes you. Do not call `status` or `list` to wait.
-- Start reviewers, and all other children that can call `contact_supervisor`, with `async: true`. A blocking run hides their questions until it returns.
-- When a run shows `[attention]`, run `subagent_supervisor` `pending` and answer.
+- Answer the likely questions in the brief: "If X is missing, assume Y and record it in `assumptions`. Ask the parent only for Z." Z is a decision that changes the verdict or the scope.
 
 ## Project Notes
 

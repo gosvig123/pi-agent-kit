@@ -54,32 +54,14 @@ const TOOLSETS: Record<string, Toolset> = {
 		sections: [],
 		keywords: /\b(ctx[_-](stats|doctor|upgrade|purge)|context-mode (stats|doctor|upgrade|purge|dashboard))\b/i,
 	},
-	// The sets below hold tools that a week of sessions used less than once per 10 sessions.
+	// The set below holds a tool that a week of sessions used less than once per 10 sessions.
 	sessions: {
 		summary: "session_lookup: find earlier Pi conversations by topic",
 		tools: /^session_lookup$/,
 		sections: [],
 		keywords: /\b((earlier|previous|past|old|other) (pi )?(conversations?|sessions?|threads?|chats?)|session_lookup)\b/i,
 	},
-	background: {
-		summary: "bg_wait: wait for detached or provider background work without native notification",
-		tools: /^bg_wait$/,
-		sections: [],
-		keywords: /\bbg_wait\b/i,
-	},
 };
-// In T3 Code, delegate_task replaces pi-subagents for a top-level session, so its tools stay
-// parked there. Children of pi-subagents (PI_SUBAGENT_CHILD=1) inherit T3_MCP_URL
-// but still need contact_supervisor, so they keep the tools.
-if (process.env.T3_MCP_URL && process.env.PI_SUBAGENT_CHILD !== "1") {
-	TOOLSETS.subagents = {
-		summary: "pi-subagents: subagent, subagent_supervisor, contact_supervisor (in T3 Code use delegate_task instead)",
-		tools: /^(subagent|subagents_enable|subagent_supervisor|contact_supervisor)$/,
-		sections: [],
-		// Gmail, Calendar, and Slack reads go through the codex-exec subagent, so those words load it too.
-		keywords: /\b(pi-subagents|review-fanout|subagent_supervisor|subagents?|codex-exec|gmail|inbox|e-?mails?|calendar|agenda|slack)\b/i,
-	};
-}
 const ENTRY_TYPE = "toolset-load";
 
 export default function toolsets(pi: ExtensionAPI) {
@@ -126,11 +108,6 @@ export default function toolsets(pi: ExtensionAPI) {
 		}
 		park(); // other extensions may have re-activated parked tools
 		const options = event.systemPromptOptions;
-		// pi-subagents (0.86.0) pushes subagents_enable into selectedTools. Pi then treats that list as an
-		// explicit edit and drops every setActiveTools() change made in this hook, including tools loaded
-		// here and tools that context-mode registers late (agent-session.js _prepareRun). Write the live
-		// loadout back into the list so the declared tools match it. pi-agent-kit loads after pi-subagents.
-		options.selectedTools?.splice(0, options.selectedTools.length, ...pi.getActiveTools());
 		for (const [name, set] of Object.entries(TOOLSETS)) {
 			if (loaded.has(name)) continue;
 			for (const section of set.sections) delete (options.sections as Record<string, unknown>)[section];
