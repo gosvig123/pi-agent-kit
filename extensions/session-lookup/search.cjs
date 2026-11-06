@@ -8,13 +8,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-// Display titles that pi-desk saved before it was removed: `pisesh-meta.json` overrides.
 function agentDir(env = process.env) {
   return path.resolve(env.PI_AGENT_DIR || env.PI_CODING_AGENT_DIR || path.join(os.homedir(), '.pi/agent'));
 }
 function sessionsRoot(env = process.env) {
   return path.resolve(env.PI_SESSION_DIR || env.PI_CODING_AGENT_SESSION_DIR || path.join(agentDir(env), 'sessions'));
 }
+// Display titles that pi-desk saved before it was removed: `pisesh-meta.json` overrides.
 function readMeta(file = path.join(agentDir(), 'pisesh-meta.json')) {
   try {
     const data = JSON.parse(fs.readFileSync(file, 'utf8'));
