@@ -12,8 +12,8 @@ Three advisors answer one question on their own. The parent compares the answers
 | Agent | Model | Thinking |
 |---|---|---|
 | `council-sol` | `openai-codex/gpt-6.1-sol` | `xhigh` |
-| `council-opus` | `claude-bridge/claude-opus-5-5` | `xhigh` |
-| `council-opus-high` | `claude-bridge/claude-opus-5-5` | `high` |
+| `council-opus` | `anthropic/claude-opus-5-5` | `xhigh` |
+| `council-opus-high` | `anthropic/claude-opus-5-5` | `high` |
 
 The profiles are in `../../agents/council-*.md`. Each advisor is read-only (`read`, `grep`, `find`, `ls`) and starts with fresh context: it does not see this conversation.
 
@@ -40,7 +40,7 @@ The profiles are in `../../agents/council-*.md`. Each advisor is read-only (`rea
    })
    ```
 
-   Always use `async: true`. The Opus advisors use `claude-bridge`, which fails in a foreground (`async: false`) run.
+   Always use `async: true`.
 
    Tell the user in one line that the council started. Then stop and wait for the completion message. Do not poll.
 3. **Check the answers.** For each claim that the advisors dispute and that changes the verdict, read the source yourself. Accept the claim that the evidence supports, not the claim that most advisors make.

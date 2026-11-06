@@ -9,8 +9,7 @@ if git diff --cached --quiet; then
   exit 1
 fi
 
-bridge="$HOME/.pi/agent/npm/node_modules/pi-claude-bridge"
-model="${PI_COMMIT_MODEL:-claude-bridge/claude-sonnet-5-5:off}"
+model="${PI_COMMIT_MODEL:-anthropic/claude-sonnet-5-5:off}"
 prompt='Write a git commit message for the staged changes on stdin.
 Match the style of the recent commit subjects shown. Format: one subject line (imperative, max 72 chars),
 then a blank line and a short body only when the why is not obvious from the subject.
@@ -23,7 +22,7 @@ msg=$(
     echo; echo "## Staged files"; git diff --cached --stat
     # Cap the diff so a large change does not blow up the prompt.
     echo; echo "## Staged diff"; git diff --cached | head -c 120000
-  } | pi -p --no-session -nt -ns -nc -ne -e "$bridge" --model "$model" "$prompt" 2>/dev/null
+  } | pi -p --no-session -nt -ns -nc -ne --model "$model" "$prompt" 2>/dev/null
 )
 
 if [ -z "$msg" ]; then

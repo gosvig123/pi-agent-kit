@@ -76,12 +76,11 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 | better-web-search | `better_web_search` tool. Uses the Codex CLI login, or `BRAVE_SEARCH_API_KEY` / `TAVILY_API_KEY` |
 | checkpoint-nudge | After long runs without user input, reminds the agent of the `AGENTS.md` larger-work check |
 | self-heal | Groups failed tool results into one recovery message and allows one safe retry |
-| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), tasks, ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`), sessions (`session_lookup`), background (`bg_wait`), and, in T3 Code top-level sessions only, subagents (`subagent`, `subagent_supervisor`, `contact_supervisor`; T3 `delegate_task` replaces them). It also gives the context-mode tools short descriptions through the `load_toolset` `prepareLoadout` hook. A set loads when the prompt names it (for example "browser" or "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. Under claude-bridge, a `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
-| output-spill | Saves `bash`, `gappd_query`, and `ctx_batch` results over 8 KB to `~/.pi/agent/tmp/tool-output/<session>/` and gives the model the head, the tail, and the path. Files older than 7 days are deleted |
+| toolsets | Keeps rarely used tool sets out of new sessions: browser (with its rules block), tasks, ctx-admin (`ctx_stats`, `ctx_doctor`, `ctx_upgrade`, `ctx_purge`), sessions (`session_lookup`), background (`bg_wait`), and, in T3 Code top-level sessions only, subagents (`subagent`, `subagent_supervisor`, `contact_supervisor`; T3 `delegate_task` replaces them). It also gives the context-mode tools short descriptions through the `load_toolset` `prepareLoadout` hook. A set loads when the prompt names it (for example "browser" or "todo"), when the session already used it, with `/toolset <name>`, or when the model calls `load_toolset`. A `load_toolset` call ends the reply and a follow-up prompt continues with the tools |
 | session-lookup | `session_lookup` tool: finds earlier Pi conversations (terminal and T3 Code threads) by topic, folder, and date. Summaries are cached in `~/.pi/agent/pisesh-search-index.json`; titles saved by the retired pi-desk still show |
 | slow-search-guard | In `bash`, `ctx_execute` shell, and `ctx_batch`, rewrites `grep -r` to an equivalent `rg` call, and `find` over `/`, `~`, `~/Developer`, `~/Library`, `~/.pi`, or `~/.pi/agent` (without `-maxdepth` 2 or less) to `fd -HI`. The result starts with a note that names the command that ran. Calls it cannot translate safely (`find -prune`/`-o`/`-exec`, `grep -f`) are blocked with a reason. 0.1–0.3 s instead of 14–120+ s |
 
-`config/settings.defaults.json` also keeps new sessions small: it excludes skills that are rarely used in Pi (Hyperframes engine skills, figma, media-use, claude-design, ctx-* commands), and compacts claude-bridge Opus at about 200k instead of near its 1M window. A new claude-bridge session starts at about 26k tokens.
+`config/settings.defaults.json` also keeps new sessions small: it excludes skills that are rarely used in Pi (Hyperframes engine skills, figma, media-use, claude-design, ctx-* commands), and compacts `anthropic/claude-opus-5-5` at about 200k instead of near its 1M window.
 
 ### Subagent
 
@@ -97,7 +96,6 @@ To turn off skills you do not want, run `pi config`, or narrow the kit entry in 
 | @samfp/pi-memory | Persistent facts and lessons across sessions |
 | @juicesharp/rpiv-ask-user-question | `ask_user_question` tool with typed options |
 | pi-agent-browser-native | Browser automation |
-| pi-claude-bridge | Use a Claude subscription as a Pi provider |
 
 Remove any package with `pi remove <source>`.
 
@@ -109,7 +107,7 @@ Remove any package with `pi remove <source>`.
 
 **Updates.** `bin/pi-up` updates Pi and every package, then starts Pi once in print mode to prove all extensions load. It handles both installs: Pi in a private npm prefix (it relinks `pi` when another package ships an old `pi` bin) and a global npm install. `pi-up --host <ssh-host>` does the same on another machine; the host needs only Pi. Put it on PATH (`ln -s "$PWD/bin/pi-up" ~/.local/bin/pi-up`), and schedule it weekly with T3 Code `schedule_task` if you want automatic updates. Exit code 1 means a machine failed; the output names the extension or login that broke.
 
-**AI commit messages in lazygit.** `bin/pi-commit` writes a commit message for the staged diff through pi-claude-bridge, then opens it in `$EDITOR`. Add to lazygit's `config.yml`:
+**AI commit messages in lazygit.** `bin/pi-commit` writes a commit message for the staged diff through the `anthropic` provider, then opens it in `$EDITOR`. Add to lazygit's `config.yml`:
 
 ```yaml
 customCommands:

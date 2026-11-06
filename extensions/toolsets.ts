@@ -5,10 +5,9 @@ import { Type } from "typebox";
 // This extension keeps them inactive until a prompt needs them, the session already
 // used them, the user runs /toolset, or the model calls load_toolset.
 //
-// The claude-bridge provider fixes the tool list for one Claude Code query, which lasts
-// until the model stops. load_toolset therefore asks the model to stop and queues a
-// follow-up prompt; that prompt starts a fresh query with the loaded tools. Do not use
-// `terminate`: it leaves the query waiting, and the bridge then reuses it.
+// load_toolset asks the model to stop and queues a follow-up prompt, so the next turn
+// starts with the loaded tools. (claude-bridge, now removed, needed this; it is kept as a
+// safe default because it works with every provider.)
 //
 // load_toolset also shortens the long context-mode tool descriptions through its
 // prepareLoadout hook. The originals cost about 4k more tokens on every call; these keep

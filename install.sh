@@ -14,7 +14,6 @@ PACKAGES=(
   "npm:@samfp/pi-memory"                           # persistent facts and lessons
   "npm:@juicesharp/rpiv-ask-user-question"         # ask_user_question tool
   "npm:pi-agent-browser-native"                    # browser automation (needs agent-browser)
-  "npm:pi-claude-bridge"                           # Claude subscription provider
 )
 
 fail() {

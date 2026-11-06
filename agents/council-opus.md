@@ -2,7 +2,7 @@
 name: council-opus
 description: Read-only council advisor on Claude Opus 5.5 (xhigh reasoning). Gives one independent answer to a council question.
 tools: read, grep, find, ls
-model: claude-bridge/claude-opus-5-5
+model: anthropic/claude-opus-5-5
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
