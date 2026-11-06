@@ -24,7 +24,7 @@ description: Creates concise pull request descriptions. Use when opening, prepar
 
 Required for every user-visible change. A PR without them stays a draft.
 
-1. Capture with `agent_browser` `screenshot`: before from the base branch (another checkout, or production when it runs the base), after from the PR branch. Use the same page, data, account type, and viewport. Add a phone width (390 px) when layout changes, and one shot per account type when who sees what changes.
+1. Capture with `agent_browser` `screenshot` in the Pi terminal, or with `preview_snapshot` and `save: true` in T3 Code (it returns `screenshotPath`; `preview_*` is allowed here because this step asks for browser work). DOM measurements are checks, not screenshots. Before from the base branch (another checkout, or production when it runs the base), after from the PR branch. Use the same page, data, account type, and viewport. Add a phone width (390 px) when layout changes, and one shot per account type when who sees what changes.
 2. Host them: GitHub has no API to attach images to a PR. Push the PNGs to the orphan branch `pr-screenshots`, in a folder named for the PR branch, without touching the working checkout:
    ```sh
    shots=$(mktemp -d); dir="$(git branch --show-current)"
@@ -34,8 +34,10 @@ Required for every user-visible change. A PR without them stays a draft.
    sha=$(git -C "$shots" rev-parse HEAD); git worktree remove "$shots"
    ```
 3. Link each image by commit, so a later push cannot change it: `https://github.com/<owner>/<repo>/blob/<sha>/<dir>/<file>.png?raw=true`. These render for everyone with repository access, private repositories too.
+   Look at each image before you post it: `Read` refuses large images, so view a copy made with `sips -s format jpeg -s formatOptions 25 -Z 640 <file> --out /tmp/view.jpg`. Retake blank or wrong screens; do not post them.
 4. Show them in a table under **Before and after**: one row per screen, columns Before and After, `<img src="…" width="420">`.
 5. If a screen cannot be captured (sign-in needs the human, no test data), name it, give the reason, and ask the human for the missing input. Do not mark the PR ready until the screenshots are in.
+6. Before you merge, or report a PR as ready, open its body and confirm that each changed screen has its screenshots. A request to merge does not waive this.
 
 ## Diagram
 

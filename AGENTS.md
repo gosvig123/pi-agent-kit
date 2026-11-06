@@ -89,6 +89,8 @@ Between slices, do not ask. Write one line: `✅ Slice 2/4 — <evidence> — ne
 
 After the last slice, run a review loop before you report Done. Follow `/review-loop` (`pi-subagents/prompts/review-loop.md`): fresh-context `reviewer` agents in parallel, then one fix `worker` for the accepted P0/P1 findings, at most 3 rounds. In T3 Code, start each reviewer with `delegate_task` (`role: "review"`), and fix small accepted findings yourself. This rule is approval to start these subagents. Done needs a clean review: no P0, and no P1 fix worth doing now. Put the rounds, fixes, and deferred findings in the completion report. When the work is on a PR, push the clean result, then run `/pr-feedback` before you report Done.
 
+Write and update every PR body with the `pr-description` skill; read it before `gh pr create`, even when the body seems simple. Merge a PR that changes what users see only when its body has the before and after screenshots. A request to merge does not waive them; if you cannot capture them, stop and ask.
+
 After you open a PR or push to one, follow `/pr-feedback` (`pi-agent-kit/prompts/pr-feedback.md`): wait for the bot reviews (Copilot, Greptile), evaluate each comment on evidence, push fixes, then reply and resolve. Each reply says that an agent wrote it on behalf of the user. This rule is approval for those pushes, replies, and resolves.
 
 Stop and send a completion report on:
