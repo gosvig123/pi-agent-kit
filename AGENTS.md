@@ -7,6 +7,7 @@
 - When the next step is clear and in scope, do it. Do not ask again for permission already given. Continue until done, blocked, or a stop event (see Larger Work).
 - Continue the existing PR, branch, file, or sheet unless the user asks for a new one. If a new one seems better, ask first.
 - When confidence is low, gather more information. If it is still low, ask the user.
+- Think from first principles in your first answer. Ask what had to be true for the problem to happen, and whether each step must happen at all, here, and every time. Recommend fixes that remove a cause before fixes that add resources or work around the problem.
 - To work like an expert, use the expert's methods and tools, not only their words. Start from the rawest source available (logs, data, source code, transcripts), not from summaries. Name a role only to choose methods; do not role-play.
 - Make errors actionable: operation, target, cause, and recovery step.
 - Between tool calls, write at most one line, and only for a finding or a change of plan.
@@ -24,7 +25,8 @@ Choose the visual by content:
 | Files changed | Table: `path:line` · change |
 | Options or tradeoffs | Table, recommended row first, marked ★ |
 | Process, cause chain, data flow | Text flow: `A → B → C`; a `mermaid` block when it branches |
-| Evidence | Short code block with the real output |
+| Rows of values in columns (scores, metrics, counts, comparisons) | Table with a header row, even when it comes from command output; put the command above it in inline code |
+| Evidence | Short code block with the real output, unless it is rows of values in columns |
 | Architecture, sequence, state, data model | `mermaid` block |
 
 - One visual per idea. No decoration. No table for one row.
@@ -34,6 +36,8 @@ Choose the visual by content:
 - When you create or change something the user will look at (file, sheet, PR, setting, record), give its path or link in the first lines of the reply.
 
 ### Visuals
+
+The host is T3 Code when the system prompt has a `t3_code_orchestration` section; otherwise it is the Pi terminal. T3 Code renders Markdown tables and code, but not `mermaid` or LaTeX: there, use a text flow or a table, and pass a diagram or chart as HTML to `html_preview`, then `html_render`. The rest of this section is for the Pi terminal.
 
 The Pi terminal renders these natively. Use them when a visual makes a non-trivial answer clearer:
 
@@ -69,7 +73,7 @@ When Larger Work stops, start with the stop event symbol, list what remains, and
 
 ## Verification
 
-- Verify with the real system. Use the first option that works:
+- Verify with the real system, where the problem happens; other environments can give different results. Use the first option that works:
   1. Run the app and use it: UI through browser tools, API through real HTTP requests (use a subagent), CLI through real commands.
   2. Call the code directly with a one-off script against real modules and isolated data.
   3. Run the existing tests.
@@ -92,7 +96,7 @@ Work is large when it spans more than one component, needs more than ~5 file edi
 
 Between slices, do not ask. Write one line: `✅ Slice 2/4 — <evidence> — next: <slice>`.
 
-After the last slice, run a review loop before you report Done. Follow `/review-loop` (`pi-subagents/prompts/review-loop.md`): fresh-context `reviewer` agents in parallel, then one fix `worker` for the accepted P0/P1 findings, at most 3 rounds. This rule is approval to start these subagents. Done needs a clean review: no P0, and no P1 fix worth doing now. Put the rounds, fixes, and deferred findings in the completion report. When the work is on a PR, push the clean result, then run `/pr-feedback` before you report Done.
+After the last slice, run a review loop before you report Done. Follow `/review-loop` (`pi-subagents/prompts/review-loop.md`): fresh-context `reviewer` agents in parallel, then one fix `worker` for the accepted P0/P1 findings, at most 3 rounds. In T3 Code, start each reviewer with `delegate_task` (`role: "review"`), and fix small accepted findings yourself. This rule is approval to start these subagents. Done needs a clean review: no P0, and no P1 fix worth doing now. Put the rounds, fixes, and deferred findings in the completion report. When the work is on a PR, push the clean result, then run `/pr-feedback` before you report Done.
 
 After you open a PR or push to one, follow `/pr-feedback` (`pi-agent-kit/prompts/pr-feedback.md`): wait for the bot reviews (Copilot, Greptile), evaluate each comment on evidence, push fixes, then reply and resolve. Each reply says that an agent wrote it on behalf of the user. This rule is approval for those pushes, replies, and resolves.
 
@@ -112,7 +116,20 @@ Stop and send a completion report on:
 
 ## Subagents
 
-- The `reviewer` agent cannot run git. Before a review of committed code (a commit, a range, or a PR), make the review files: `git diff <base> <head> > /tmp/review-<head>/range.diff` and `git archive <head> <changed paths> | tar -x -C /tmp/review-<head>/snapshot`. Put both paths in the task. Delete them after the results arrive.
+Children cannot see this conversation. Most child questions ask for an input that the parent already has. Send the input at launch.
+
+In T3 Code, start children with `delegate_task` and follow the `t3_code_orchestration` rules; the `subagent`, `review-fanout.js`, and `subagent_supervisor` lines below are for the Pi terminal. The evidence pack applies in both hosts.
+
+- Before you start children, make an evidence pack in `/tmp/brief-<slug>/`. Delete it after the results arrive.
+  - `context.md`: the goal and why; decisions already made (do not reopen them); invariants that define a pass, as testable statements ("if the label step fails, return the text without labels"); out of scope.
+  - Open decisions: if a decision can change the verdict, get it from the user before launch. For each other open decision, write the assumption to use.
+  - `range.diff` and `snapshot/`: the changed files and their direct callers. `reviewer` cannot run git. For committed code (a commit, a range, or a PR), run `git diff <base> <head> > range.diff` and `git archive <head> <paths> | tar -x -C snapshot`. Make sure that `range.diff` is not empty: a symlinked file belongs to the repo of its target.
+  - `checks.txt`: the real output of the tests, build, lint, and repro commands that the children need. `reviewer` has no shell, so run these commands first.
+  - Any PR body, issue text, or API response that the child must read.
+- In each brief, send only what is different for that child: `Read /tmp/brief-<slug>/context.md first.`, then its angle, its part of the code, what the other children cover, `cwd`, and the output. Do not paste the shared context into each brief.
+- Answer the likely questions in the brief: "If X is missing, assume Y and record it in `assumptions`. Contact the supervisor only for Z." Z is a decision that changes the verdict or the scope.
+- Start parallel reviewers with `subagent({ workflow: "/Users/krisitan/.pi/agent/workflows/review-fanout.js", async: true, args: { tasks: [{ task, cwd }] } })` (the path does not expand `~`). Each reviewer returns findings that follow one schema. The script lists all findings, sorted by severity and `file:line`, with the reviewer that found each one. Send the accepted findings to the fix `worker` as a list. Read `missingInputs` to improve the next pack.
+- Native completion wakes you. Do not call `status` or `list` to wait.
 - Start reviewers, and all other children that can call `contact_supervisor`, with `async: true`. A blocking run hides their questions until it returns.
 - When a run shows `[attention]`, run `subagent_supervisor` `pending` and answer.
 
@@ -124,12 +141,12 @@ Stop and send a completion report on:
 ## Tool Notes
 
 - context-mode blocks `curl`/`wget` in `bash` unless the call is silent and writes to a file (`curl -s -o /tmp/x.json URL`). Run HTTP calls that pipe or print output in `ctx_execute` with `language: shell`.
-- `ctx_execute`/`ctx_batch_execute` shell code runs in `/bin/bash` 3.2. No `mapfile`, `declare -A`, or `${var,,}`. A `ctx_batch_execute` command that starts with `for`, `while`, or `if` fails (context-mode puts `NODE_OPTIONS=…` before it); start it with `cd . &&`.
-- `ctx_*` calls with no `timeout` stop after 120 s (`pi-agent-kit/extensions/ctx-timeout.ts`). Pass a larger `timeout` for long builds.
+- `ctx_execute`/`ctx_batch` shell code runs in `/bin/bash` 3.2. No `mapfile`, `declare -A`, or `${var,,}`.
+- `ctx_execute` takes `timeoutMs`, not `timeout` (an unknown field fails the call). It defaults to and caps at 600 s.
 - Search file contents with `rg`, not `grep -r`, in one repo or folder. Never search all of `~/Developer` (43 GB), `~`, or `~/.pi/agent` (5.4 GB). `rg` skips `.gitignore` paths (`node_modules`, `dist`, `sessions`); add `-uu` only to search them, and treat "no match" without `-uu` as "not in tracked source". Find files by name with `fd`. Find past conversations with `session_lookup` or `hindsight`, not by searching `~/.pi/agent/sessions`. The `slow-search-guard` extension rewrites `grep -r` to `rg`, and `find` over `/`, `~`, `~/Developer`, `~/Library`, `~/.pi`, or `~/.pi/agent` to `fd -HI`; a result that starts with `[slow-search-guard]` came from the rewritten command.
 - Pi returns a parallel tool batch only when its slowest call ends. Do not put a long wait (CI watch, poll loop) in the same batch as quick calls: a `git push` result waited 15 min for a Railway poll.
 - To wait for CI, use `gh pr checks <pr> --watch` or `gh run watch <id>`. To wait for a process or log, run a bounded loop that exits on the condition (`until <check>; do sleep 10; done` with a timeout). Do not chain fixed `sleep` calls.
-- `ctx_fetch_and_index` uses plain HTTP. When a page returns 403 or a bot-check page (Cloudflare, Zendesk help centers, openai.com, npmjs.com, LinkedIn), load the `browser` tool set and read the page with `agent_browser`.
+- `ctx_index` with `url` fetches web pages over plain HTTP. When a page returns 403 or a bot-check page (Cloudflare, Zendesk help centers, openai.com, npmjs.com, LinkedIn), load the `browser` tool set and read the page with `agent_browser`.
 - To test a child Pi from `ctx_execute`, run `env -u CONTEXT_MODE_BRIDGE_DEPTH pi -p …`. The context-mode server sets that variable, and a child that inherits it skips its `ctx_*` tools (recursion guard).
 - `agent_browser` `eval`: top-level `await` fails. Use `(async () => { …; return value; })()`. Before `fetch` in `eval`, run `get url`: on `about:blank` or another origin, `open` the app first and use absolute URLs.
 - `agent_browser_code` allows 25 browser calls per run. For loops over many items, do the loop inside one `eval`, or split the work into several runs.

@@ -6,9 +6,9 @@ import { join } from "node:path";
 // Every turn re-reads the whole context, so one large tool result is paid for again on
 // every later turn. Session analysis showed bash results over 8 KB are 5% of calls but 39%
 // of bash output. This extension saves such results to a file and gives the model the
-// head, the tail, and the file path instead. ctx_batch_execute output is also indexed by
+// head, the tail, and the file path instead. ctx_batch output is also indexed by
 // context-mode, so ctx_search can return any omitted section.
-const SPILL_TOOLS = new Set(["bash", "gappd_query", "ctx_batch_execute"]);
+const SPILL_TOOLS = new Set(["bash", "gappd_query", "ctx_batch"]);
 const LIMIT = 8_000;
 const HEAD = 2_500;
 const TAIL = 1_500;
@@ -57,7 +57,7 @@ export default function outputSpill(pi: ExtensionAPI) {
 		const lines = text.split("\n").length;
 		const note =
 			`\n\n[… ${(text.length - HEAD - TAIL).toLocaleString("en-US")} chars omitted. Full output (${text.length.toLocaleString("en-US")} chars, ${lines.toLocaleString("en-US")} lines) saved to ${path}. ` +
-			`Search it with grep or ctx_execute_file, or read one part with read offset/limit. Do not print it again in full.]\n\n`;
+			`Search it with grep or ctx_execute with file set, or read one part with read offset/limit. Do not print it again in full.]\n\n`;
 		const images = event.content.filter((block) => block.type === "image");
 		return {
 			content: [{ type: "text", text: text.slice(0, HEAD) + note + text.slice(-TAIL) }, ...images],

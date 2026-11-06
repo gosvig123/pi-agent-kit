@@ -20,8 +20,7 @@ PACKAGES=(
   "npm:pi-cmux"                                    # cmux chats, splits, tools, browser, worktree handoffs
   "npm:pi-tutor"                                   # tutor mode
   "https://github.com/carderne/pi-nvim"            # nvim integration
-  "git:github.com/gosvig123/pi-desk"               # /desk: conversations, tasks, Tick results
-  "git:github.com/gosvig123/pi-tick@pi-agent-kit"  # scheduled agent jobs
+  "git:github.com/gosvig123/pi-desk"               # /desk: conversations and tasks
 )
 
 fail() {

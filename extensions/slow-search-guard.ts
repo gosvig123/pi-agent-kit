@@ -291,8 +291,10 @@ function shellFields(toolName: string, input: Record<string, unknown>): ShellFie
 	const field = (obj: Record<string, unknown>, key: string): ShellField => ({ get: () => String(obj[key] ?? ""), set: (s) => (obj[key] = s) });
 	if (toolName === "bash") return [field(input, "command")];
 	if (toolName === "ctx_execute" && input.language === "shell") return [field(input, "code")];
-	if (toolName === "ctx_batch_execute" && Array.isArray(input.commands))
-		return input.commands.filter((c) => c && typeof c === "object").map((c) => field(c as Record<string, unknown>, "command"));
+	if (toolName === "ctx_batch" && Array.isArray(input.commands)) {
+		const commands = input.commands as unknown[];
+		return commands.flatMap((c, i) => (typeof c === "string" ? [{ get: () => String(commands[i]), set: (s: string) => (commands[i] = s) }] : []));
+	}
 	return [];
 }
 
