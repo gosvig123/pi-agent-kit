@@ -14,7 +14,7 @@ Recover evidence-first. Preserve useful partial work. Never hide failure.
 3. Inspect status and artifacts before action. For a `delegate_task` child, read its result with `task_status` or `t3_thread_read`.
 4. Salvage valid output first. A failed lifecycle can still contain a usable artifact.
 5. Retry once only when operation is read-only/idempotent, no mutation evidence exists, cause is transient or repaired, and this failure signature has not retried.
-6. Use fresh rerun for read-only work. Use `resume` only with persisted child session and continuation prompt that forbids repeating completed mutations.
+6. Use fresh rerun for read-only work. To continue a failed `delegate_task` child, start a new one with its saved output and a brief that forbids repeating completed mutations.
 7. Validate recovered result. Report cause, action, evidence, and residual risk.
 
 ## Stop Conditions

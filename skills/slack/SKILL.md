@@ -37,6 +37,7 @@ Put in the brief: the workspace, the channel or DM, the time range, the result l
 - Do not copy Slack data to another service without explicit approval.
 - Never read or copy Codex/ChatGPT credentials or auth files.
 - If the connector fails, report the operation, target, and actual error. Send the user to the Codex/ChatGPT connection settings when authentication is needed.
+- If `delegate_task` or the Codex provider is not available, report the blocker. Do not switch to a browser, a direct MCP server, or another route.
 
 ## Trigger examples
 

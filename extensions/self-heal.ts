@@ -4,6 +4,7 @@ import {
   inputFingerprint, needsRecovery, noticeKey, uniqueFailures, type Failure, type RecoveryDetails,
 } from "../lib/self-heal-policy";
 
+const ENTRY_TYPE = "self-heal-recovery";
 
 type ToolFailureEvent = {
   toolCallId: string;

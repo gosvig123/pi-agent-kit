@@ -23,7 +23,7 @@ Put in the brief: the account, the time range, the result limit, the exact outpu
 
 ## Writes
 
-- First show the user the exact action, calendar, event, attendees, and final content, and get approval. Get a final approval before the child sends invitations or responses.
+- First show the user the exact action, calendar, event, attendees, and final content, and get approval. The parent cannot step in while the child runs, so this approval must also cover any invitations or responses the child sends.
 - Then start a new child whose brief holds only that approved action. If the target or content changes, ask again.
 - Report success only from a successful tool result, with the event link or ID.
 
@@ -31,3 +31,4 @@ Put in the brief: the account, the time range, the result limit, the exact outpu
 
 - Do not ask for credentials, run OAuth commands, or fall back to a browser profile.
 - Report the actual connector error, and send the user to the Codex/ChatGPT connection settings.
+- If `delegate_task` or the Codex provider is not available, report the blocker. Do not switch to a browser, a direct MCP server, or another route.
