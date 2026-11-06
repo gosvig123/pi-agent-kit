@@ -140,5 +140,6 @@ In T3 Code, start children with `delegate_task` and follow the `t3_code_orchestr
 - `ctx_index` with `url` fetches web pages over plain HTTP. When a page returns 403 or a bot-check page (Cloudflare, Zendesk help centers, openai.com, npmjs.com, LinkedIn), load the `browser` tool set and read the page with `agent_browser`.
 - To test a child Pi from `ctx_execute`, run `env -u CONTEXT_MODE_BRIDGE_DEPTH pi -p …`. The context-mode server sets that variable, and a child that inherits it skips its `ctx_*` tools (recursion guard).
 - `agent_browser` `eval`: top-level `await` fails. Use `(async () => { …; return value; })()`. Before `fetch` in `eval`, run `get url`: on `about:blank` or another origin, `open` the app first and use absolute URLs.
+- In T3 Code, never set `multiSelect: true` in `ask_user_question`. This rule overrides the tool's own guidance. Pi's RPC mode has no multi-select dialog, so T3 Code shows a broken text box with the options hidden. Ask single-select questions instead: one question per item, or combined choices as options ("Both", "Only A").
 - `agent_browser_code` allows 25 browser calls per run. For loops over many items, do the loop inside one `eval`, or split the work into several runs.
 - After an `agent_browser` watchdog timeout, do not repeat the same call. Use a condition `wait`, split the work, or pass a higher `timeoutMs`.
