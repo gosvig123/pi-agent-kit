@@ -26,6 +26,9 @@
     "modelOverrides": {
       "claude-bridge/claude-opus-5-5": {
         "reserveTokens": 800000
+      },
+      "anthropic/claude-opus-5-5": {
+        "reserveTokens": 800000
       }
     }
   },

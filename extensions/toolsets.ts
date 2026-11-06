@@ -81,6 +81,17 @@ const TOOLSETS: Record<string, Toolset> = {
 		keywords: /\bbg_wait\b/i,
 	},
 };
+// In T3 Code, delegate_task replaces pi-subagents for a top-level session, so its tools stay
+// parked there. Children of pi-subagents (PI_SUBAGENT_CHILD=1) inherit T3_MCP_URL
+// but still need contact_supervisor, so they keep the tools.
+if (process.env.T3_MCP_URL && process.env.PI_SUBAGENT_CHILD !== "1") {
+	TOOLSETS.subagents = {
+		summary: "pi-subagents: subagent, subagent_supervisor, contact_supervisor (in T3 Code use delegate_task instead)",
+		tools: /^(subagent|subagents_enable|subagent_supervisor|contact_supervisor)$/,
+		sections: [],
+		keywords: /\b(pi-subagents|review-fanout|subagent_supervisor)\b/i,
+	};
+}
 const ENTRY_TYPE = "toolset-load";
 
 export default function toolsets(pi: ExtensionAPI) {

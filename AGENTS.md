@@ -118,7 +118,7 @@ Stop and send a completion report on:
 
 Children cannot see this conversation. Most child questions ask for an input that the parent already has. Send the input at launch.
 
-In T3 Code, start children with `delegate_task` and follow the `t3_code_orchestration` rules; the `subagent`, `review-fanout.js`, and `subagent_supervisor` lines below are for the Pi terminal. The evidence pack applies in both hosts.
+In T3 Code, start children with `delegate_task` and follow the `t3_code_orchestration` rules; the `subagent`, `review-fanout.js`, and `subagent_supervisor` lines below are for the Pi terminal. In T3 Code these tools are parked; run `load_toolset` `subagents` only when the user asks for pi-subagents. The evidence pack applies in both hosts.
 
 - Before you start children, make an evidence pack in `/tmp/brief-<slug>/`. Delete it after the results arrive.
   - `context.md`: the goal and why; decisions already made (do not reopen them); invariants that define a pass, as testable statements ("if the label step fails, return the text without labels"); out of scope.
