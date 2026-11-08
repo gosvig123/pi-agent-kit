@@ -39,6 +39,8 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | frontend-design | Intentional visual direction for new UI |
 | project-memory | `CONTEXT.md` check, domain modeling, lessons from sessions, and skill creation |
 
+The author's private config adds `accounts` (Chrome profiles, Gmail, Calendar, Slack) and `work-items` (PR bodies, GitHub and Linear issues); they are not in this kit.
+
 Each merged skill has a short `SKILL.md` that routes to one file in `references/`, so the always-loaded skill list stays small.
 
 Optional skills. They load with the kit but need your own setup; without it they report the missing piece:

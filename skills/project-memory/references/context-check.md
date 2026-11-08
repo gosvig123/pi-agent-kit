@@ -1,4 +1,4 @@
-# Context Gardener
+# Context Check
 
 Preserve project language, not implementation notes.
 

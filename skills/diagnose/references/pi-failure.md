@@ -1,4 +1,4 @@
-# Self Heal
+# Pi Failure Recovery
 
 Recover evidence-first. Preserve useful partial work. Never hide failure.
 

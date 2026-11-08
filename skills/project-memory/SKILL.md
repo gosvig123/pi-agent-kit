@@ -1,6 +1,6 @@
 ---
 name: project-memory
-description: Keep durable project knowledge accurate. End-of-task CONTEXT.md delta check after non-trivial work; domain modeling while naming or changing concepts, states, rules, or boundaries (and ADRs); human-approved lessons from user corrections or repeated failures ("learn from this"); and creating or fixing Agent Skills.
+description: Keep durable project knowledge accurate. End-of-task CONTEXT.md delta check after non-trivial work; domain modeling, used automatically while naming or changing concepts, states, rules, boundaries, or code and API names, or resolving vague terms (and ADRs); human-approved lessons from user corrections or repeated failures ("learn from this"); and creating or fixing Agent Skills, packaging a repeatable workflow, or repairing skill triggering.
 ---
 
 # Project Memory

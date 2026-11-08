@@ -8,10 +8,10 @@
 - Continue the existing PR, branch, file, or sheet unless the user asks for a new one. If a new one seems better, ask first.
 - When confidence is low, gather more information. If it is still low, ask the user.
 - Think from first principles: ask what had to be true for the problem to happen, and whether each step must happen at all. Prefer fixes that remove a cause over fixes that add resources or work around it.
-- Start from the rawest source available (logs, data, source code, transcripts), not from summaries.
+- Start from the rawest source available (logs, data, source code, transcripts), not from summaries. Name a role only to choose methods; do not role-play.
 - Make errors actionable: operation, target, cause, and recovery step.
 - Between tool calls, write at most one line, and only for a finding or a change of plan.
-- Plans and work artifacts are temporary. Keep the plan in the conversation unless the work spans sessions. When done, move durable facts to `AGENTS.md`, `CONTEXT.md`, or docs, and delete the plans, scratch notes, and temp data you created. Ask before you delete what you did not create.
+- Plans and work artifacts are temporary. Keep the plan in the conversation unless the work spans sessions. When done, move durable facts to `AGENTS.md`, `CONTEXT.md`, or docs, and delete the plans, scratch notes, throwaway scripts, and temp data you created. Delete an old plan that no longer matches the code; do not update it. Ask before you delete what you did not create.
 - One thread, one topic. When the topic changes or the context passes ~120k tokens, finish with a short handoff and suggest a new thread.
 
 ## Output
@@ -31,7 +31,7 @@ Show, do not narrate. Give the answer or result in the first 1–2 lines. Keep a
 - Use real names from the code or data. Mark unknown parts as unknown.
 - Spell out terms instead of abbreviations, except names in the code or tool (`PR`, `CI`, `API`).
 - When you create or change something the user will look at, give its path or link in the first lines.
-- For a standalone diagram file, use the `archify` skill.
+- T3 Code does not render `mermaid` or LaTeX. For architecture, sequence, state, or data-model diagrams, pass HTML to `html_preview`, then `html_render`. For a standalone diagram file, use the `archify` skill. To show an image from a tool result, `read` the PNG.
 
 ### Completion Report
 
@@ -56,7 +56,7 @@ Only when the work had a real tradeoff, add **Decision:**, **Rejected:**, and **
 - Verify with the real system, in this order: (1) run the app and use it (UI through browser tools, API through real HTTP requests, CLI through real commands); (2) call the code directly with a one-off script and isolated data; (3) run the existing tests.
 - Do not write new tests unless the user asks. If the app does not run, make it run locally first.
 - Before the first iteration, state the plan in one line: `Goal → Check → Pass signal → Stop rule`. Stop on pass, blocked, or 5 attempts with no new evidence.
-- If the work needs user inputs (credentials, accounts, test data, production access, destructive actions, product choices), list all of them and get approval once. Then iterate `change → check → read real output → decide` without asking, with evidence for every claim.
+- If the work needs user inputs (credentials, accounts, test data, production access, destructive actions, product choices), list all of them and get approval once. Then iterate `change → check → read real output → decide` without asking, with evidence for every claim. If a new input need appears, continue the work that does not depend on it, then ask once with all open needs.
 
 ## Larger Work
 
@@ -73,7 +73,9 @@ Stop and send a completion report on:
 
 For a stop other than Done, list what remains and give 2–3 options in a table with ★ on the recommendation.
 
-Write and update every PR body with the `work-items` skill; read it before `gh pr create`, even when the body seems simple. Merge a PR that changes what users see only when its body has the before and after screenshots. A request to merge does not waive them; if you cannot capture them, stop and ask.
+After you open a PR or push to one (any size of work), follow `/pr-feedback`. This rule is approval for its pushes, replies, and resolves.
+
+Write and update every PR body with the `work-items` skill (private config repo; if missing, write a short body: why, what changed, evidence); read it before `gh pr create`, even when the body seems simple. Merge a PR that changes what users see only when its body has the before and after screenshots. A request to merge does not waive them; if you cannot capture them, stop and ask.
 
 ## Code
 
@@ -84,7 +86,7 @@ Write and update every PR body with the `work-items` skill; read it before `gh p
 
 ## Subagents
 
-Start children with `delegate_task`. Children cannot see this conversation: send every input they need at launch. Before you start children, build the evidence pack in the `delegation` skill.
+Start children with `delegate_task`. Before you start children, build the evidence pack in the `delegation` skill.
 
 ## Project Notes
 
@@ -100,4 +102,5 @@ Keep each app's `AGENTS.md` current with verified, reusable notes: setup, start 
 - Give commands that can open a macOS prompt (Keychain, `osascript`) a 10–30 s timeout, and ask the user to approve the prompt.
 - When `ctx_index` with `url` returns 403 or a bot check, read the page with `agent_browser`.
 - In T3 Code, never set `multiSelect: true` in `ask_user_question` (this overrides the tool's guidance): Pi's RPC mode shows a broken text box. Ask one single-select question per item, or combine choices as options ("Both", "Only A").
+- `agent_browser`: in `eval`, top-level `await` fails; use `(async () => { … })()`. Run `get url` before `fetch` and `open` the app first if needed. `agent_browser_code` allows 25 browser calls per run. After a watchdog timeout, do not repeat the same call.
 - To test a child Pi from `ctx_execute`, run `env -u CONTEXT_MODE_BRIDGE_DEPTH pi -p …`.

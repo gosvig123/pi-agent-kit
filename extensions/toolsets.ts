@@ -66,7 +66,9 @@ const ENTRY_TYPE = "toolset-load";
 
 // pi-agent-browser-native puts a ~35k-character playbook in the system prompt of every
 // call once the browser set loads. Its compact mode keeps the operating rules in ~3k and
-// points to the installed docs for the rest. The package reads this variable per prompt.
+// points to the installed docs for the rest. The package reads this variable per prompt,
+// but only while Pi does not manage instruction groups (`pi:instruction-groups`); if a Pi
+// upgrade starts managing them, the full text returns. Recheck the section size after upgrades.
 process.env.AGENT_BROWSER_PLAYBOOK ??= "compact";
 
 export default function toolsets(pi: ExtensionAPI) {

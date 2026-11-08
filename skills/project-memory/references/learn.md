@@ -1,4 +1,4 @@
-# Learn From Session
+# Learn
 
 Improve future behavior through small, approved changes. No self-modifying automation.
 

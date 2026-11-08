@@ -1,4 +1,4 @@
-# Blast Radius
+# Change Risk
 
 Look beyond callers to the assumptions that make a change safe.
 
