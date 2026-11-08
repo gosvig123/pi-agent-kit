@@ -32,6 +32,7 @@ Show, do not narrate. Give the answer or result in the first 1–2 lines. Keep a
 - Spell out terms instead of abbreviations, except names in the code or tool (`PR`, `CI`, `API`).
 - When you create or change something the user will look at, give its path or link in the first lines.
 - T3 Code does not render `mermaid` or LaTeX. For architecture, sequence, state, or data-model diagrams, pass HTML to `html_preview`, then `html_render`. For a standalone diagram file, use the `archify` skill. To show an image from a tool result, `read` the PNG.
+- "Doc" means a Google Doc, not a local Markdown or Word file. Create it in the Google account that owns the topic (leasemobil@gmail.com for personal, kristian@remotely.works for Remotely) and give the user its link. Executor has no Drive or Docs app (verified 2026-11-07): run `pandoc in.md -o out.docx`; open `drive.google.com` in the matching Chrome profile (`accounts` skill); in `eval`, patch `HTMLInputElement.prototype.click` to tag the `type=file` input `data-pi-upload` instead of opening the file dialog; click New → "File upload", run `upload "[data-pi-upload='1']" <docx>`; open the file and choose File → "Save as Google Docs" (Docs menus need `mousedown`, `mouseup`, `click`). Trash the `.docx` in Drive and the local files.
 
 ### Completion Report
 

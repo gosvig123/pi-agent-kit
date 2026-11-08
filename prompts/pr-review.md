@@ -46,7 +46,7 @@ For deeper review, fetch or check out PR into a temporary worktree, then inspect
 | Tests | missing high-value coverage or brittle tests |
 | Product risk | UX regressions, deploy risk, compatibility |
 
-Use subagents in parallel when available. If unavailable, run angles yourself as separate passes.
+In T3 Code, run the angles as parallel `delegate_task` reviewers. In the Pi terminal, run them yourself as separate passes.
 
 ## Output
 
