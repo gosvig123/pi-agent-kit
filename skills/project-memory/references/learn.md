@@ -1,8 +1,3 @@
----
-name: learn-from-session
-description: Propose human-approved lessons from user corrections, recurring tool/test failures, or meaningful session outcomes. Use when a session reveals a reusable lesson or the user asks to learn; do not require an update after every task.
----
-
 # Learn From Session
 
 Improve future behavior through small, approved changes. No self-modifying automation.

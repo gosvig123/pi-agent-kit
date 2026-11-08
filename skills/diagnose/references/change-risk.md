@@ -1,8 +1,3 @@
----
-name: blast-radius
-description: Find what a change could break beyond its diff and test the facts its safety depends on. Use for "blast radius of X", "what could this break", or reviewing a small diff you do not trust.
----
-
 # Blast Radius
 
 Look beyond callers to the assumptions that make a change safe.

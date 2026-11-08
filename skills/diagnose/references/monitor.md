@@ -1,8 +1,3 @@
----
-name: babysit
-description: Monitor active engineering processes, fix safe minor failures, and revalidate until healthy or escalation is needed. Use for "babysit this", monitoring deployments or CI, following rollouts, or minor workflow/process issues.
----
-
 # Babysit
 
 Keep the process moving without expanding scope or hiding risk.

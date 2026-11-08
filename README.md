@@ -33,30 +33,25 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | Skill | Use |
 |---|---|
 | archify | Validated architecture, workflow, sequence, data-flow, lifecycle, ERD, class, tree, timeline, and waterfall diagrams, and one-page explainers, as standalone HTML. Vendored from [tt-a1i/archify](https://github.com/tt-a1i/archify) v3.2.0 |
-| babysit | Watch CI, deploys, or rollouts, fix safe minor failures, re-check |
-| blast-radius | What a change could break beyond its diff |
-| context-gardener | Keep a project's `CONTEXT.md` glossary accurate |
-| diagnose | Structured debugging for unclear, flaky, or performance bugs |
-| domain-modeling | Domain terms, relationships, and rules during design work |
+| council | Ask three advisor models the same question and compare their answers |
+| delegation | Evidence pack for child agents, and the end-of-work review loop |
+| diagnose | Debugging, change risk (blast radius), monitoring CI or deploys, and Pi failure recovery |
 | frontend-design | Intentional visual direction for new UI |
-| github-issues | Draft, create, search, and update GitHub issues |
-| learn-from-session | Propose reusable lessons from corrections and failures |
-| pr-description | Short pull request descriptions |
-| self-heal | Recover from tool, extension, and provider failures |
-| skill-creator | Create and improve skills |
+| project-memory | `CONTEXT.md` check, domain modeling, lessons from sessions, and skill creation |
+
+Each merged skill has a short `SKILL.md` that routes to one file in `references/`, so the always-loaded skill list stays small.
 
 Optional skills. They load with the kit but need your own setup; without it they report the missing piece:
 
 | Skill | Needs |
 |---|---|
-| gmail, google-calendar, slack | T3 Code `delegate_task` with the Codex provider, and Codex/ChatGPT hosted connectors for those accounts |
 | review-calls | A [Gappd](https://github.com/gosvig123/gappd) MCP server, or a transcript you paste in |
 | macos-app-drive | macOS, with Accessibility permission for the terminal |
 
 To turn off skills you do not want, run `pi config`, or narrow the kit entry in `~/.pi/agent/settings.json`:
 
 ```json
-{ "source": "git:github.com/gosvig123/pi-agent-kit", "skills": ["!skills/gmail", "!skills/google-calendar", "!skills/slack"] }
+{ "source": "git:github.com/gosvig123/pi-agent-kit", "skills": ["!skills/review-calls", "!skills/macos-app-drive"] }
 ```
 
 ### Prompt templates

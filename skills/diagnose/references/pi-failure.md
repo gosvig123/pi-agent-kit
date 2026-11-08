@@ -1,8 +1,3 @@
----
-name: self-heal
-description: Diagnoses and conservatively recovers from Pi tool, extension, provider, and child-task failures. Use when an operation errors, a workflow step fails, Pi reports unavailable tools, or auto-heal requests recovery.
----
-
 # Self Heal
 
 Recover evidence-first. Preserve useful partial work. Never hide failure.
@@ -21,4 +16,4 @@ Recover evidence-first. Preserve useful partial work. Never hide failure.
 
 Do not auto-retry user cancellation, `stop`, destructive commands, writes, external publication, authentication, payment, legal acceptance, unknown side effects, or repeated signature. Do not edit installed `node_modules`; create user/project overrides.
 
-When blocked, give exact recovery command or decision needed. After repeated evidenced failure, use `learn-from-session`; request approval before durable memory or instruction changes.
+When blocked, give exact recovery command or decision needed. After repeated evidenced failure, use `project-memory` (learn); request approval before durable memory or instruction changes.

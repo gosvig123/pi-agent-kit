@@ -1,8 +1,3 @@
----
-name: skill-creator
-description: Creates, reviews, and improves Agent Skills for Pi or compatible harnesses. Use when asked to make a skill, package a repeatable workflow, or repair skill discovery and triggering.
----
-
 # Skill Creator
 
 Create the smallest skill that reliably triggers and guides work.
