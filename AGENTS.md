@@ -102,5 +102,5 @@ Keep each app's `AGENTS.md` current with verified, reusable notes: setup, start 
 - Give commands that can open a macOS prompt (Keychain, `osascript`) a 10–30 s timeout, and ask the user to approve the prompt.
 - When `ctx_index` with `url` returns 403 or a bot check, read the page with `agent_browser`.
 - In T3 Code, never set `multiSelect: true` in `ask_user_question` (this overrides the tool's guidance): Pi's RPC mode shows a broken text box. Ask one single-select question per item, or combine choices as options ("Both", "Only A").
-- `agent_browser`: in `eval`, top-level `await` fails; use `(async () => { … })()`. Run `get url` before `fetch` and `open` the app first if needed. `agent_browser_code` allows 25 browser calls per run. After a watchdog timeout, do not repeat the same call.
+- `agent_browser`: in `eval`, top-level `await` fails; use `(async () => { … })()`. Run `get url` before `fetch`; on `about:blank` or another origin, `open` the app first and use absolute URLs. `agent_browser_code` allows 25 browser calls per run: loop inside one `eval`, or split the work. After a watchdog timeout, do not repeat the call: use a condition `wait`, split the work, or raise `timeoutMs`.
 - To test a child Pi from `ctx_execute`, run `env -u CONTEXT_MODE_BRIDGE_DEPTH pi -p …`.
