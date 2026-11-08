@@ -40,7 +40,7 @@ const TOOLSETS: Record<string, Toolset> = {
 		summary: "agent_browser web automation: open pages, signed-in sites, clicks, forms, screenshots",
 		tools: /^agent_browser/,
 		sections: ["agent_browser"],
-		keywords: /\b(browser|website|web ?page|screenshots?|click|log(ged)?[- ]?in|sign(ed)?[- ]in|gmail|inbox|hubspot|clay|n8n|whatsapp|linkedin|chrome|scrape|playwright)\b|agent_browser/i,
+		keywords: /\b(browser|website|web ?page|screenshots?|gmail|inbox|hubspot|clay|n8n|whatsapp|linkedin|chrome|scrape|playwright)\b|agent_browser/i,
 	},
 	tasks: {
 		summary: "tasks-go task lists: view, create, update, complete, and delete tasks and subtasks",
@@ -63,6 +63,11 @@ const TOOLSETS: Record<string, Toolset> = {
 	},
 };
 const ENTRY_TYPE = "toolset-load";
+
+// pi-agent-browser-native puts a ~35k-character playbook in the system prompt of every
+// call once the browser set loads. Its compact mode keeps the operating rules in ~3k and
+// points to the installed docs for the rest. The package reads this variable per prompt.
+process.env.AGENT_BROWSER_PLAYBOOK ??= "compact";
 
 export default function toolsets(pi: ExtensionAPI) {
 	const loaded = new Set<string>();
