@@ -26,4 +26,4 @@ Each round, start 2–3 fresh reviewers in parallel with `delegate_task` (`role:
 - Fix small accepted findings yourself. Give larger ones to one `delegate_task` with `role: "implementation"`.
 - At most 3 rounds. Clean means no P0 and no P1 worth fixing now.
 - Put the rounds, fixes, and deferred findings in the completion report.
-- When the work is on a PR, push the clean result, then run `/pr-feedback`.
+- When the work is on a PR, push the clean result, then run `/pr-feedback` (read `~/.pi/agent/local/pi-agent-kit/prompts/pr-feedback.md`).

@@ -98,6 +98,7 @@ Keep each app's `AGENTS.md` current with verified, reusable notes: setup, start 
 - `ctx_execute`/`ctx_batch` shell is `/bin/bash` 3.2 (no `mapfile`, `declare -A`, `${var,,}`). `ctx_execute` takes `timeoutMs` (max 600 s), not `timeout`.
 - context-mode blocks `curl`/`wget` in `bash` unless the call is silent and writes to a file. Run HTTP calls that print output in `ctx_execute`.
 - Search with `rg` in one repo or folder. Never search all of `~/Developer`, `~`, or `~/.pi/agent`. Find files with `fd`, past conversations with `session_lookup`.
+- A rule that says to follow a prompt such as `/pr-feedback` means: `read` `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md` and follow it. Pi lists skills in the context, not prompts. `fd` and `rg` skip git-ignored files, and `~/.pi` ignores `agent/local/` (this kit: rules, skills, prompts), so search there with `fd -u` or `rg -u`.
 - Pi returns a parallel tool batch only when its slowest call ends. Do not batch a long wait with quick calls.
 - Wait on a condition (`gh pr checks <pr> --watch`, `until <check>; do sleep 10; done` with a timeout), not on fixed `sleep` calls.
 - Give commands that can open a macOS prompt (Keychain, `osascript`) a 10–30 s timeout, and ask the user to approve the prompt.
