@@ -40,13 +40,8 @@ const TOOLSETS: Record<string, Toolset> = {
 		summary: "agent_browser web automation: open pages, signed-in sites, clicks, forms, screenshots",
 		tools: /^agent_browser/,
 		sections: ["agent_browser"],
-		keywords: /\b(browser|website|web ?page|screenshots?|gmail|inbox|hubspot|clay|n8n|whatsapp|linkedin|chrome|scrape|playwright)\b|agent_browser/i,
-	},
-	tasks: {
-		summary: "tasks-go task lists: view, create, update, complete, and delete tasks and subtasks",
-		tools: /^tasks_/,
-		sections: [],
-		keywords: /\b(task ?lists?|to-?dos?|subtasks?|my tasks|today'?s? (list|tasks)|tasks-go)\b/i,
+		// Gmail, tasks, and other signed-in APIs go through Executor, so their names do not load the browser.
+		keywords: /\b(browser|website|web ?page|screenshots?|hubspot|clay|n8n|whatsapp|linkedin|chrome|scrape|playwright)\b|agent_browser/i,
 	},
 	"ctx-admin": {
 		summary: "context-mode maintenance: ctx_stats, ctx_doctor, ctx_upgrade, ctx_purge",
