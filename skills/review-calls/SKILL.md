@@ -1,6 +1,6 @@
 ---
 name: review-calls
-description: Review calls and meetings using Gappd recordings and transcripts by default. Use for "review my call", "review today's calls", "what did we agree in that meeting?", or extracting decisions, open questions, and action items from a call. Accept an explicitly supplied recording or transcript instead. Not for code reviews, recording setup, or calendar scheduling.
+description: "Review calls and meetings from Gappd recordings and transcripts (or a supplied transcript): decisions, open questions, action items. Use for \"review my call\", \"today's calls\", \"what did we agree\". Not for code review or scheduling."
 ---
 
 # Review Calls

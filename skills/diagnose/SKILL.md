@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: Use for (1) a diff or change you do not trust ("I don't trust this diff", "blast radius", "what could this break"); (2) bugs with unclear causes, intermittent failures, performance regressions ("diagnose this", "debug this"); (3) watching CI, deploys, or rollouts until healthy ("babysit this"); (4) Pi failures, such as a tool that errors or is missing, a failed workflow step, extension, provider, or child task, or an [auto-heal] message.
+description: Use for a diff you do not trust ("blast radius", "what could this break"), a bug with an unclear cause, a flaky failure or performance regression, watching CI or a deploy until healthy ("babysit this"), or a Pi failure (tool, extension, provider, child task, [auto-heal]).
 ---
 
 # Diagnose

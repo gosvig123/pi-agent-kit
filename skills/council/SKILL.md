@@ -1,6 +1,6 @@
 ---
 name: council
-description: Ask a council of three advisors (GPT-6.1 Sol at xhigh, Claude Opus 5.5 at xhigh, Claude Opus 5.5 at high) the same question, then compare their answers and give one verdict. Use for "council", "ask the council", "convene the council", "get other opinions", "what do the other models think", or a hard decision, design choice, or diagnosis where independent views help. Not for routine edits or questions with one clear answer.
+description: Ask three advisors (GPT-6.1 Sol xhigh, Claude Opus 5.5 xhigh and high) the same question, then compare and give one verdict. Use for "council", "get other opinions", or a hard decision, design choice, or diagnosis. Not for routine edits.
 ---
 
 # Council
@@ -11,7 +11,7 @@ Three advisors answer one question on their own. The parent compares the answers
 
 | Advisor | `delegate_task` target |
 |---|---|
-| sol | `{"providerInstanceId": "codex", "model": "gpt-6.1-sol", "options": {"reasoningEffort": "xhigh"}}` |
+| sol | `{"providerInstanceId": "pi", "model": "openai-codex/gpt-6.1-sol", "options": {"thinking": "xhigh"}}` |
 | opus | `{"providerInstanceId": "pi", "model": "anthropic/claude-opus-5-5", "options": {"thinking": "xhigh"}}` |
 | opus-high | `{"providerInstanceId": "pi", "model": "anthropic/claude-opus-5-5", "options": {"thinking": "high"}}` |
 

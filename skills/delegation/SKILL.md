@@ -5,6 +5,10 @@ description: Brief child agents with an evidence pack and run the end-of-work re
 
 # Delegation
 
+## Child model
+
+Omit `target` for the default child (GPT-6.1 Sol at high through Pi): the `child-target` extension fills it in. Set `target` only when a skill (such as `council`) or the user names another model. Never use the `codex` provider.
+
 ## Evidence pack (before you start children)
 
 Make it in `/tmp/brief-<slug>/`. Delete it after the results arrive.

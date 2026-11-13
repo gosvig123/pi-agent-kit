@@ -5,9 +5,9 @@ import { Type } from "typebox";
 // This extension keeps them inactive until a prompt needs them, the session already
 // used them, the user runs /toolset, or the model calls load_toolset.
 //
-// load_toolset asks the model to stop and queues a follow-up prompt, so the next turn
-// starts with the loaded tools. (claude-bridge, now removed, needed this; it is kept as a
-// safe default because it works with every provider.)
+// load_toolset activates the set during the call. Pi appends the tool delta before the
+// next model request (docs/extensions.md, "Dynamic Tool Loading"), so the run continues
+// without a forced stop and follow-up turn.
 //
 // load_toolset also shortens the long context-mode tool descriptions through its
 // prepareLoadout hook. The originals cost about 4k more tokens on every call; these keep
@@ -16,7 +16,8 @@ const SHORT_DESCRIPTIONS: Record<string, string> = {
 	ctx_execute:
 		"Run code in a sandboxed subprocess (javascript, typescript, shell, python, ruby, go, rust, php, perl). Only what the code prints enters the conversation, so filter, count, parse, and aggregate inside the code and print only the answer. " +
 		"Use it when output size is unknown (repo-wide greps, list endpoints, logs, query results). Pass `intent` to index output over ~5 KB and get section titles back; then use ctx_search. Pass `background: true` to keep a server or watcher alive. " +
-		"Use bash instead for short known output, file changes, and cd/ls. Wrap risky calls in try/catch: uncaught errors go to stderr.",
+		"Use bash instead for short known output, file changes, and cd/ls. Wrap risky calls in try/catch: uncaught errors go to stderr. " +
+		"The shell language is /bin/bash 3.2 (no mapfile, declare -A, or ${var,,}). The timeout parameter is timeoutMs (max 600000).",
 	ctx_search:
 		"Search the knowledge base: content stored by ctx_index and ctx_batch, plus auto-captured session memory (sources such as decision, error, error-resolution, blocker, plan, user-prompt, rejected-approach, compaction). " +
 		"Matching uses stemming, substrings, typo correction, and proximity ranking. Put all related questions in one call, 2-4 specific terms per query. Use `source` to scope (partial match), `sort: \"timeline\"` for prior sessions and auto-memory (relevance covers only the current session), and `scope` (session, worktree, or project). " +
@@ -121,7 +122,7 @@ export default function toolsets(pi: ExtensionAPI) {
 		name: "load_toolset",
 		label: "Load Toolset",
 		description:
-			"Load a hidden tool set before you use its tools. After the call, stop and the task continues automatically in a new turn with the tools available. Hidden sets: " +
+			"Load a hidden tool set before you use its tools. Its tools are available in your next tool call. Hidden sets: " +
 			Object.entries(TOOLSETS).map(([name, set]) => `${name} (${set.summary})`).join("; ") + ".",
 		parameters: Type.Object({
 			name: Type.Union(Object.keys(TOOLSETS).map((name) => Type.Literal(name)), { description: "Tool set to load" }),
@@ -131,13 +132,7 @@ export default function toolsets(pi: ExtensionAPI) {
 			if (!load(params.name, "load_toolset")) {
 				return { content: [{ type: "text", text: `The ${params.name} tool set is already loaded.` }] };
 			}
-			pi.sendUserMessage(`[toolset] The ${params.name} tool set is now loaded. Continue the task.`, { deliverAs: "followUp" });
-			return {
-				content: [{
-					type: "text",
-					text: `Loaded the ${params.name} tool set. Its tools become available in the next turn. Stop now: reply with one short line and make no more tool calls. The task continues automatically.`,
-				}],
-			};
+			return { content: [{ type: "text", text: `Loaded the ${params.name} tool set. Its tools are available now. Continue the task.` }] };
 		},
 	});
 

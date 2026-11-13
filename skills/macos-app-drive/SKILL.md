@@ -1,6 +1,6 @@
 ---
 name: macos-app-drive
-description: Drive and check native macOS app UI (SwiftUI, AppKit, Electron, menu bar apps) through the Accessibility API, then capture one window as proof. Use when verifying a local app build; clicking buttons, menus, or hotkeys in a desktop app; reading its on-screen text; or taking a window screenshot to show a UI fix. Not for web pages (use the browser tools).
+description: Drive and check native macOS app UI (SwiftUI, AppKit, Electron, menu bar) through the Accessibility API, and capture one window as proof. Use to verify a local app build or click its buttons, menus, or hotkeys. Not for web pages.
 ---
 
 # macOS App Drive
