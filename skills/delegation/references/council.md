@@ -1,8 +1,3 @@
----
-name: council
-description: Ask three advisors (GPT-6.1 Sol xhigh, Claude Opus 5.5 xhigh and high) the same question, then compare and give one verdict. Use for "council", "get other opinions", or a hard decision, design choice, or diagnosis. Not for routine edits.
----
-
 # Council
 
 Three advisors answer one question on their own. The parent compares the answers, checks the disputed facts, and gives one verdict. The council gives advice only. It does not change files.

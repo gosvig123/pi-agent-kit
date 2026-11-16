@@ -1,13 +1,15 @@
 ---
 name: delegation
-description: Brief child agents with an evidence pack and run the end-of-work review loop. Use before any delegate_task launch, and after the last slice of Larger Work.
+description: "Start child agents: brief them with an evidence pack, run the end-of-work review loop, or ask a council of three advisors for one verdict. Use before any delegate_task launch, after the last slice of Larger Work, or for \"council\", \"get other opinions\", or a hard decision, design choice, or diagnosis."
 ---
 
 # Delegation
 
+Council (three advisors, one verdict, advice only): read and follow `references/council.md`.
+
 ## Child model
 
-Omit `target` for the default child (GPT-6.1 Sol at high through Pi): the `child-target` extension fills it in. Set `target` only when a skill (such as `council`) or the user names another model. Never use the `codex` provider.
+Omit `target` for the default child (GPT-6.1 Sol at high through Pi): the `child-target` extension fills it in. Set `target` only when the council roster or the user names another model. Never use the `codex` provider.
 
 ## Evidence pack (before you start children)
 

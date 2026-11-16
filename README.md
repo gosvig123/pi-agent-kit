@@ -33,8 +33,7 @@ To try only the kit for one session, without the installer: `pi -e git:github.co
 | Skill | Use |
 |---|---|
 | archify | Validated architecture, workflow, sequence, data-flow, lifecycle, ERD, class, tree, timeline, and waterfall diagrams, and one-page explainers, as standalone HTML. Vendored from [tt-a1i/archify](https://github.com/tt-a1i/archify) v3.2.0 |
-| council | Ask three advisor models the same question and compare their answers |
-| delegation | Evidence pack for child agents, and the end-of-work review loop |
+| delegation | Evidence pack for child agents, and the end-of-work review loop; council of three advisors (`references/council.md`) |
 | diagnose | Debugging, change risk (blast radius), monitoring CI or deploys, and Pi failure recovery |
 | frontend-design | Intentional visual direction for new UI |
 | project-memory | `CONTEXT.md` check, domain modeling, lessons from sessions, and skill creation |

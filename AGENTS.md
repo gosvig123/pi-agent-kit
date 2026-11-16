@@ -2,57 +2,56 @@
 
 ## Working Style
 
-- Write in ASD-STE100 Simplified Technical English: short active sentences, common words. Use the exact terms from `CONTEXT.md` (and `CONTEXT-MAP.md`). Define new terms once.
-- Simplicity first. Prefer the smallest correct change: delete, reuse, or simplify before adding. Fix causes, not symptoms. Start from raw sources (logs, data, code), not summaries.
-- When confidence is low, gather more information; if it stays low, ask.
-- When the next step is clear and in scope, do it. Continue the existing PR, branch, file, or sheet unless the user asks for a new one.
-- Ask only about outcomes, consent, and charter items. Decide execution details yourself (review mechanics, temporary files, reversible presentation) and say what you chose. When you ask for approval, say in one line what it allows. While a question waits, continue the work that does not depend on it.
-- Make errors actionable: operation, target, cause, and recovery step.
+- Write short active sentences with common words (ASD-STE100 style). Use the exact terms from `CONTEXT.md` and `CONTEXT-MAP.md`.
+- Prefer the smallest correct change: delete, reuse, or simplify before you add. Fix causes, not symptoms. Start from raw sources (logs, data, code), not summaries.
+- When the next step is clear and in scope, do it. Continue the existing PR, branch, or file unless the user asks for a new one.
+- Ask only about outcomes, consent, and charter items; decide execution details yourself. When confidence stays low after you look, ask. While a question waits, continue the work that does not depend on it.
+- Errors say the operation, the target, the cause, and the recovery step.
 - Between tool calls, write at most one line, and only for a finding or a change of plan.
-- Delete the plans, scratch files, and temp data you created when done; move durable facts to `AGENTS.md`, `CONTEXT.md`, or docs. Ask before you delete what you did not create.
-- One thread, one topic. When the topic changes or the context passes ~120k tokens, finish with a short handoff and suggest a new thread.
+- When done, delete the scratch files you made. Ask before you delete what you did not make.
+- One thread, one topic. When the topic changes or context passes ~120k tokens, give a short handoff and suggest a new thread.
 
 ## Output
 
-Give the answer in the first 1–2 lines. Keep a reply to 10 lines or fewer unless the content needs more. Status symbols: ✅ done · ⛔ blocked · ⚠️ budget, drift, or surprise. Use tables for files changed (`path:line` · change), options (recommended row first, ★), and rows of values; text flows (`A → B → C`) for processes; short code blocks for evidence. No table for one row. Use real names; mark unknowns as unknown. Spell out abbreviations except names in code (`PR`, `CI`, `API`). Give the path or link of anything the user will look at.
+Every reply uses this shape:
 
-Diagrams: write Mermaid. In a PR body GitHub renders it (`work-items`); elsewhere use the `archify` skill. "Doc" means a Google Doc (`accounts` skill).
+```
+✅ <the answer or result in one line>
+- <up to 3 bullets: what changed, why, or the proof; one fact each>
+Next: <only when the user must act or choose>
+```
 
-Completion report: `✅ <result>` · `Cause:` · files table · `Evidence:` (real output) · `Next:` when needed. Add `Decision:`/`Rejected:`/`Unknown:` only for a real tradeoff.
+- Line 1 starts with ✅ done, ⛔ blocked, or ⚠️ surprise or risk. A plain question gets a plain answer, with no symbol.
+- 10 lines or fewer, unless the user asks for detail.
+- A table only for 3 or more rows of the same kind: files changed (`path:line` · change), or options (recommended row first, with ★).
+- At a stop that is not done, give 2–3 options with ★ on the recommended one.
+- Use real names and paths. Write unknowns as "unknown". Spell out abbreviations, except names in code.
+- Diagrams: Mermaid. In a PR body, GitHub renders it (`work-items`); elsewhere use the `archify` skill. "Doc" means a Google Doc (`accounts`).
 
 ## Verification
 
-Verify with the real system: run the app and use it, then a one-off script, then the existing tests. Do not write new tests unless asked. State `Goal → Check → Pass signal → Stop rule` before the first iteration; stop on pass, blocked, or 5 attempts with no new evidence. List all needed user inputs (credentials, test data, destructive actions) once, then iterate without asking.
+Check with the real system first: run the app and use it, then a one-off script, then the existing tests. Write no new tests unless asked. Before the first try, state `Goal → Check → Pass signal`. Stop on pass, on blocked, or after 5 tries with no new evidence. Ask for all needed inputs (credentials, test data, destructive actions) once.
 
 ## Larger Work
 
-Large = more than one component, more than ~5 file edits, or an unclear end state. First show a plan (done signal, out of scope, 2–5 verified slices, budget) and get approval once; a request that states scope and done signal is the plan. Between slices write `✅ Slice n/N — <evidence> — next: <slice>`. After the last slice, run the review loop in the `delegation` skill; on a PR, then follow `/pr-feedback`. These rules approve the reviewers, pushes, replies, and resolves they need. Stop with a report on done, blocked, budget, drift (out-of-scope change, new dependency, schema or public API change, destructive action), or surprise; for a non-done stop, give 2–3 options with ★.
+Large means more than one component, more than ~5 file edits, or an unclear end. First show a plan (done signal, out of scope, 2–5 slices, budget) and get approval once; a request that gives scope and a done signal is the plan. After each slice: `✅ Slice n/N — <evidence> — next: <slice>`. Then follow the `delegation` skill (review loop). Stop and report on done, blocked, budget, or drift (out-of-scope change, new dependency, schema or public API change, destructive action).
 
-After you open or push to a PR (any size of work), follow `/pr-feedback`. Write every PR body with the `work-items` skill, and merge a PR that changes what users see only with before and after screenshots in its body.
+After you open or push to a PR, follow `/pr-feedback`. Write every PR body with `work-items`. A PR that changes what users see needs before and after screenshots in its body.
 
 ## Code
 
-One file, one responsibility. Extract a function only for a real operation or to remove duplication. Prefer the standard library; add a dependency only when it removes more complexity than it adds. Flat control flow; side effects at the edges. Tests (only when asked): real code paths, the existing runner, mocks only at boundaries.
+One file, one responsibility. Extract a function only for a real operation or to remove duplication. Prefer the standard library. Flat control flow; side effects at the edges. Tests, only when asked: real code paths, the existing runner, mocks only at boundaries.
 
-## Tools: one route per job
+## Tools
 
-| Job | Route |
-|---|---|
-| Child agents | `delegate_task` only (not Pi `subagent` tools or a native `Agent`). The `child-target` extension sets the default model; brief children with the `delegation` skill. |
-| Browser automation, signed-in sites | `agent_browser` (`agent_browser_code` for loops); profiles in the `accounts` skill |
-| T3 `preview_*` | Only when the user asks for the T3 browser or names a T3 page |
-| Show a visual in T3 | `html_preview` then `html_render` |
-| External apps (Gmail, Slack, Linear, HubSpot) | `executor_*`; the `mcp` tool only to install or authenticate |
-| Web search / read a page | `better_web_search` / `ctx_index` with `url` (403 or bot check: `agent_browser`) |
-
-- Prompts such as `/pr-feedback` mean: read `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md` and follow it. `fd`/`rg` skip that git-ignored kit; use `fd -u`/`rg -u`.
-- context-mode blocks printing `curl`/`wget` in `bash`; run HTTP calls in `ctx_execute`.
-- `agent_browser`: in `eval`, wrap `await` in `(async () => { … })()`; `open` the app before `fetch` and use absolute URLs; `agent_browser_code` allows 25 browser calls per run; after a watchdog timeout, use a condition `wait` or split the work.
-- Wait on conditions (`gh pr checks --watch`, `until …; do sleep 10; done`), not fixed sleeps. Do not batch a long wait with quick calls.
-- Give commands that can open a macOS prompt a 10–30 s timeout and ask the user to approve it.
+- Child agents: `delegate_task` only, never Pi `subagent` tools or a native `Agent`. Brief them with the `delegation` skill.
+- Signed-in sites and browser automation: the `accounts` skill. External apps (Gmail, Slack, Linear, HubSpot): `executor_*`.
+- `/pr-feedback` and other prompts: read `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md`. `fd` and `rg` skip that git-ignored kit; use `fd -u` or `rg -u`.
+- Wait on conditions (`gh pr checks --watch`, `until …; do sleep 10; done`), not fixed sleeps.
+- Give a command that can open a macOS prompt a 10–30 s timeout, and ask the user to approve the prompt.
 - In T3 Code, never set `multiSelect: true` in `ask_user_question`.
 - Test a child Pi from `ctx_execute` with `env -u CONTEXT_MODE_BRIDGE_DEPTH pi -p …`.
 
 ## Project Notes
 
-Keep each app's `AGENTS.md` current with verified, reusable notes (setup, start commands, URLs, how to verify key workflows). No secrets, task status, or guesses. After non-trivial project work, run the `project-memory` delta check.
+Keep each app's `AGENTS.md` current with verified, reusable notes (setup, start commands, URLs, how to check key workflows); no secrets, task status, or guesses. After non-trivial work, run the `project-memory` delta check.
