@@ -1,11 +1,11 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 // T3 Code starts every delegate_task child with "Act as the <role> sub-agent for this task."
 // (444 of 444 child sessions, Nov 2026). Children also load the parent rules in AGENTS.md, so
 // 54% called ctx_resume on an empty session, 41 ran the project-memory check, and implementation
 // children started their own review loops. This adds child rules that take precedence.
 // If T3 changes that first line, children silently get only the parent rules.
-const CHILD_START = /^Act as the [\w-]+ sub-agent for this task\./;
+const CHILD_START = /^Act as the ([\w-]+) sub-agent for this task\./;
 // context-mode adds this hint to every new session; a child session is always new.
 const RESUME_HINT = /^This session may have run before\..*(\n|$)/m;
 const SECTION = "child_agent";
@@ -28,10 +28,16 @@ function firstUserText(entries: unknown[]): string {
 	return "";
 }
 
+/** The child's brief and its role ("review", "implementation", ...), or null in a session that is not a child. */
+export function childBrief(ctx: ExtensionContext, prompt?: string): { role: string; brief: string } | null {
+	const brief = (firstUserText(ctx.sessionManager.getEntries()) || (prompt ?? "")).trimStart();
+	const role = CHILD_START.exec(brief)?.[1];
+	return role ? { role, brief } : null;
+}
+
 export default function childMode(pi: ExtensionAPI) {
 	pi.on("before_agent_start", (event, ctx) => {
-		const start = firstUserText(ctx.sessionManager.getEntries()) || (event.prompt ?? "");
-		if (!CHILD_START.test(start.trimStart())) return;
+		if (!childBrief(ctx, event.prompt)) return;
 
 		const options = event.systemPromptOptions;
 		if (options.forceSystemPrompt !== undefined) {

@@ -9,7 +9,7 @@ const DEFAULT_TARGET = {
 	model: "openai-codex/gpt-6.1-sol",
 	options: { thinking: "high" },
 };
-const DELEGATE_TOOLS = new Set(["mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]);
+export const DELEGATE_TOOLS = new Set(["mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]);
 
 export default function childTarget(pi: ExtensionAPI) {
 	pi.on("tool_call", (event) => {
