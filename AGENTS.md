@@ -45,7 +45,7 @@ One file, one responsibility. Extract a function only for a real operation or to
 
 ## Tools
 
-- Child agents: `delegate_task` only, never Pi `subagent` tools or a native `Agent`. Brief them with the `delegation` skill.
+- Child agents: `delegate_task` only, never Pi `subagent` tools or a native `Agent`. Brief them with the `delegation` skill. In a child, `extensions/child-mode.ts` adds rules that win over this file (no `ctx_resume`, plan approval, review loop, child agents, or memory check unless the brief asks; a fixed reply shape).
 - Signed-in sites and browser automation: the `accounts` skill. External apps (Gmail, Slack, Linear, HubSpot): `executor_*`.
 - `/pr-feedback` and other prompts: read `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md`. `fd` and `rg` skip that git-ignored kit; use `fd -u` or `rg -u`.
 - Wait on conditions (`gh pr checks --watch`, `until …; do sleep 10; done`), not fixed sleeps.

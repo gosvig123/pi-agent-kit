@@ -23,6 +23,8 @@ When a child writes a file, give it an output path in `~/Documents/pi-output/<YY
 - `checks.txt`: the real output of the tests, build, lint, and repro commands the children need, so each child does not run them again.
 - Any PR body, issue text, or API response the child must read.
 
+Children follow the child rules in `~/.pi/agent/local/pi-agent-kit/extensions/child-mode.ts`: no child agents, review loop, memory check, or questions to the human unless the brief asks, and a fixed reply shape (line 1 `✅ done`, `✅ clean`, `⚠️ <n> findings (P0 a / P1 b / P2 c)`, or `⛔ blocked: <cause>`). Say in the brief when a child may do one of those things, or when it must use another reply format.
+
 In each brief, send only what is different for that child: `Read /tmp/brief-<slug>/context.md first.`, then its angle, its part of the code, what the other children cover, `cwd`, and the output path. Answer the likely questions: "If X is missing, assume Y and record it in `assumptions`. Ask the parent only for Z." Z is a decision that changes the verdict or the scope.
 
 A child on another machine cannot read this machine's `/tmp`. Put the brief in the task text instead.
