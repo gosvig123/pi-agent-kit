@@ -9,6 +9,7 @@
 - Errors say the operation, the target, the cause, and the recovery step.
 - Between tool calls, write at most one line, and only for a finding or a change of plan.
 - When done, delete the scratch files you made. Ask before you delete what you did not make.
+- A file you link for the user (report, summary, review, export) is a deliverable, not scratch. Write it to the project, or to `~/Documents/pi-output/<YYYY-MM-DD>-<slug>/` when it does not belong in the project. Never link a path in `/tmp` or in a folder you will delete. If you move a file, link the new path.
 - One thread, one topic. When the topic changes or context passes ~120k tokens, give a short handoff and suggest a new thread.
 
 ## Output

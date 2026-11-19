@@ -13,7 +13,9 @@ Omit `target` for the default child (GPT-6.1 Sol at high through Pi): the `child
 
 ## Evidence pack (before you start children)
 
-Make it in `/tmp/brief-<slug>/`. Delete it after the results arrive.
+Make it in `/tmp/brief-<slug>/`. It holds inputs only. Delete it after the results arrive.
+
+When a child writes a file, give it an output path in `~/Documents/pi-output/<YYYY-MM-DD>-<slug>/` (or the project), never in the brief folder. Then the paths in the child's report stay valid after you delete the brief.
 
 - `context.md`: the goal and why; decisions already made (do not reopen them); invariants that define a pass, as testable statements ("if the label step fails, return the text without labels"); out of scope.
 - Open decisions: if a decision can change the verdict, get it from the user before launch. For each other open decision, write the assumption to use.
@@ -21,7 +23,7 @@ Make it in `/tmp/brief-<slug>/`. Delete it after the results arrive.
 - `checks.txt`: the real output of the tests, build, lint, and repro commands the children need, so each child does not run them again.
 - Any PR body, issue text, or API response the child must read.
 
-In each brief, send only what is different for that child: `Read /tmp/brief-<slug>/context.md first.`, then its angle, its part of the code, what the other children cover, `cwd`, and the output. Answer the likely questions: "If X is missing, assume Y and record it in `assumptions`. Ask the parent only for Z." Z is a decision that changes the verdict or the scope.
+In each brief, send only what is different for that child: `Read /tmp/brief-<slug>/context.md first.`, then its angle, its part of the code, what the other children cover, `cwd`, and the output path. Answer the likely questions: "If X is missing, assume Y and record it in `assumptions`. Ask the parent only for Z." Z is a decision that changes the verdict or the scope.
 
 A child on another machine cannot read this machine's `/tmp`. Put the brief in the task text instead.
 
