@@ -1,0 +1,117 @@
+#!/usr/bin/env node
+// Cross-provider CLI for the shared review-findings store (~/.pi/agent/review-findings/<slug>/).
+// Lets Claude Code, Codex, and Antigravity record and merge review findings alongside Pi.
+import { parseArgs } from "node:util";
+import {
+	ORIGINS,
+	SEVERITIES,
+	appendFinding,
+	mergeFindings,
+	readFindings,
+	renderFindingsReport,
+} from "../lib/review-findings-store.ts";
+
+const USAGE = `Usage:
+  review-finding add --brief <slug> --severity P0|P1|P2 --origin diff|existing \\
+    --file <path> [--line <n>] --title <text> --proof <text> [--fix <text>] [--angle <name>] [--reviewer <id>]
+  review-finding merge <slug> [--since <iso>] [--json]`;
+
+function fail(operation, target, cause, recovery) {
+	console.error(`review-finding: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+	process.exit(1);
+}
+
+const [cmd, ...rest] = process.argv.slice(2);
+if (!cmd || cmd === "-h" || cmd === "--help") {
+	console.log(USAGE);
+	process.exit(0);
+}
+
+if (cmd === "add") {
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args: rest,
+			options: {
+				brief: { type: "string" },
+				severity: { type: "string" },
+				origin: { type: "string" },
+				file: { type: "string" },
+				line: { type: "string" },
+				title: { type: "string" },
+				proof: { type: "string" },
+				fix: { type: "string" },
+				angle: { type: "string" },
+				reviewer: { type: "string" },
+			},
+			allowPositionals: false,
+		});
+	} catch (err) {
+		fail("parse arguments", "add", err.message, "Run `review-finding --help` for valid flags.");
+	}
+	const v = parsed.values;
+	for (const key of ["brief", "severity", "origin", "file", "title", "proof"]) {
+		if (!v[key]) fail("validate input", `--${key}`, "missing required flag", `Pass --${key} <value>.`);
+	}
+	if (!SEVERITIES.includes(v.severity)) {
+		fail("validate severity", v.severity, `must be one of ${SEVERITIES.join(", ")}`, "Use P0, P1, or P2.");
+	}
+	if (!ORIGINS.includes(v.origin)) {
+		fail("validate origin", v.origin, `must be one of ${ORIGINS.join(", ")}`, "Use diff or existing.");
+	}
+	let line;
+	if (v.line !== undefined) {
+		line = Number(v.line);
+		if (!Number.isInteger(line) || line < 1) {
+			fail("validate line", v.line, "must be a positive integer", "Pass an integer line number or omit --line.");
+		}
+	}
+	const reviewer = v.reviewer || process.env.T3_THREAD_ID || process.env.PI_SESSION_ID || (v.angle ? `cli-${v.angle}` : "cli-default");
+	try {
+		appendFinding(v.brief, {
+			time: new Date().toISOString(),
+			reviewer,
+			angle: v.angle ?? "",
+			severity: v.severity,
+			origin: v.origin,
+			file: v.file,
+			...(line !== undefined ? { line } : {}),
+			title: v.title,
+			proof: v.proof,
+			...(v.fix ? { fix: v.fix } : {}),
+		});
+	} catch (err) {
+		fail("append finding", v.brief, err.message, "Fix the slug or directory permissions and retry.");
+	}
+	console.log(`Recorded ${v.severity} (${v.origin}) ${v.file}${line ? `:${line}` : ""} for brief "${v.brief}".`);
+} else if (cmd === "merge") {
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args: rest,
+			options: {
+				since: { type: "string" },
+				json: { type: "boolean", default: false },
+			},
+			allowPositionals: true,
+		});
+	} catch (err) {
+		fail("parse arguments", "merge", err.message, "Run `review-finding --help` for valid flags.");
+	}
+	const slug = parsed.positionals[0];
+	if (!slug) fail("validate input", "slug", "missing brief slug", "Pass `review-finding merge <slug>`.");
+	try {
+		const findings = readFindings(slug, parsed.values.since);
+		if (parsed.values.json) {
+			const caused = mergeFindings(findings.filter((f) => (f.origin ?? "diff") === "diff"));
+			const existing = mergeFindings(findings.filter((f) => f.origin === "existing"));
+			console.log(JSON.stringify({ slug, count: findings.length, diff: caused, existing }, null, 2));
+		} else {
+			console.log(renderFindingsReport(slug, findings));
+		}
+	} catch (err) {
+		fail("read findings", slug, err.message, "Check the brief slug and retry.");
+	}
+} else {
+	fail("dispatch command", cmd, "unknown subcommand", "Use `add` or `merge`.");
+}

@@ -1,0 +1,208 @@
+#!/usr/bin/env node
+// Deterministic PR screenshot publisher for the orphan `pr-screenshots` branch.
+// Uploads PNGs without touching the working checkout, prints a commit-pinned Markdown table,
+// and builds small JPEG previews with `sips` so agents can visually verify each shot.
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join, relative, resolve } from "node:path";
+import { parseArgs } from "node:util";
+
+const USAGE = `Usage:
+  pr-shots publish <file1.png> [file2.png ...] [--branch <dir>] [--remote <origin>]
+                   [--repo <owner/repo>] [--no-push] [--dry-run] [--json]
+  pr-shots preview <image> [out.jpg]`;
+
+class CliError extends Error {}
+
+function fail(operation, target, cause, recovery) {
+	throw new CliError(`pr-shots: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+}
+
+function run(cmd, args, opts = {}) {
+	const res = spawnSync(cmd, args, { encoding: "utf8", ...opts });
+	if (res.status !== 0 && !opts.allowFail) {
+		fail(
+			`run ${cmd}`,
+			`${cmd} ${args.join(" ")}`,
+			(res.stderr || res.stdout || `exit ${res.status}`).trim(),
+			opts.recovery || "Check git/remote state and retry.",
+		);
+	}
+	return res;
+}
+
+function validateBranchDir(branchDir) {
+	if (!branchDir || branchDir.startsWith("/") || branchDir.includes("\\") || branchDir.split("/").some((p) => p === "" || p === "." || p === "..")) {
+		fail("validate branch dir", branchDir || "(empty)", "invalid or unsafe relative path", "Pass a clean branch name without leading /, \\, or .. segments.");
+	}
+	return branchDir;
+}
+
+function detectRepo(remote) {
+	const url = run("git", ["remote", "get-url", remote], { allowFail: true }).stdout?.trim() || "";
+	const match = /github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/i.exec(url);
+	return match?.[1] || null;
+}
+
+function buildTable(repo, sha, dir, files) {
+	const urlFor = (name) =>
+		repo
+			? `https://github.com/${repo}/blob/${sha}/${encodeURIComponent(dir).replace(/%2F/g, "/")}/${encodeURIComponent(name)}?raw=true`
+			: `pr-screenshots:${sha}:${dir}/${name}`;
+	const before = new Map();
+	const after = new Map();
+	const other = [];
+	for (const name of files) {
+		if (/^before[-_]/i.test(name)) before.set(name.replace(/^before[-_]/i, "").replace(/\.[^.]+$/, ""), name);
+		else if (/^after[-_]/i.test(name)) after.set(name.replace(/^after[-_]/i, "").replace(/\.[^.]+$/, ""), name);
+		else other.push(name);
+	}
+	const keys = [...new Set([...before.keys(), ...after.keys()])];
+	const lines = [];
+	if (keys.length > 0) {
+		lines.push("| Screen | Before | After |", "|---|---|---|");
+		for (const key of keys) {
+			const b = before.get(key);
+			const a = after.get(key);
+			const label = key.replace(/[-_]+/g, " ");
+			const bCell = b ? `<img src="${urlFor(b)}" width="420">` : "_n/a_";
+			const aCell = a ? `<img src="${urlFor(a)}" width="420">` : "_missing_";
+			lines.push(`| ${label} | ${bCell} | ${aCell} |`);
+		}
+	}
+	for (const name of other) {
+		lines.push(`**${name.replace(/\.[^.]+$/, "")}**`, `<img src="${urlFor(name)}" width="420">`);
+	}
+	return { markdown: lines.join("\n"), urls: Object.fromEntries(files.map((f) => [f, urlFor(f)])) };
+}
+
+function makePreview(src, outPath) {
+	const sips = run("sips", ["-s", "format", "jpeg", "-s", "formatOptions", "25", "-Z", "640", src, "--out", outPath], { allowFail: true });
+	return sips.status === 0 ? outPath : null;
+}
+
+function main() {
+	const [cmd, ...rest] = process.argv.slice(2);
+	if (!cmd || cmd === "-h" || cmd === "--help") {
+		console.log(USAGE);
+		return;
+	}
+
+	if (cmd === "preview") {
+		const [src, explicitOut] = rest;
+		if (!src) fail("validate input", "image", "missing image path", "Pass `pr-shots preview <image> [out.jpg]`.");
+		const absSrc = resolve(src);
+		if (!existsSync(absSrc)) fail("read image", absSrc, "file does not exist", "Check the path and retry.");
+		const out = explicitOut ? resolve(explicitOut) : join(tmpdir(), `pr-shot-${basename(absSrc).replace(/\.[^.]+$/, "")}.jpg`);
+		const made = makePreview(absSrc, out);
+		if (!made) fail("convert image", absSrc, "sips failed or is unavailable", "Install/use macOS sips or resize manually.");
+		console.log(made);
+		return;
+	}
+
+	if (cmd !== "publish") {
+		fail("dispatch command", cmd, "unknown subcommand", "Use `publish` or `preview`.");
+	}
+
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args: rest,
+			options: {
+				branch: { type: "string" },
+				remote: { type: "string", default: "origin" },
+				repo: { type: "string" },
+				"no-push": { type: "boolean", default: false },
+				"dry-run": { type: "boolean", default: false },
+				json: { type: "boolean", default: false },
+			},
+			allowPositionals: true,
+		});
+	} catch (err) {
+		fail("parse arguments", "publish", err.message, "Run `pr-shots --help` for valid flags.");
+	}
+
+	const inputs = parsed.positionals.map((p) => resolve(p));
+	if (inputs.length === 0) fail("validate input", "files", "no screenshot files given", "Pass one or more image files to publish.");
+	for (const file of inputs) {
+		if (!existsSync(file)) fail("read image", file, "file does not exist", "Capture the screenshot first, then retry.");
+	}
+
+	const v = parsed.values;
+	const branchDir = validateBranchDir(v.branch || run("git", ["branch", "--show-current"]).stdout.trim());
+	const repo = v.repo || detectRepo(v.remote);
+	const fileNames = inputs.map((f) => basename(f));
+
+	if (v["dry-run"]) {
+		const { markdown, urls } = buildTable(repo, "<sha>", branchDir, fileNames);
+		const out = { dryRun: true, repo, branchDir, files: fileNames, urls, markdown };
+		console.log(v.json ? JSON.stringify(out, null, 2) : markdown);
+		return;
+	}
+
+	const worktreeDir = mkdtempSync(join(tmpdir(), "pr-shots-wt-"));
+	const previewDir = mkdtempSync(join(tmpdir(), "pr-shots-view-"));
+	let worktreeAdded = false;
+	try {
+		// Explicit refspec updates refs/remotes/<remote>/pr-screenshots even in single-branch clones.
+		const remoteRef = `refs/remotes/${v.remote}/pr-screenshots`;
+		const fetched = run("git", ["fetch", v.remote, `refs/heads/pr-screenshots:${remoteRef}`], { allowFail: true });
+		const hasLocal = run("git", ["show-ref", "--verify", "--quiet", "refs/heads/pr-screenshots"], { allowFail: true }).status === 0;
+		const hasRemote = fetched.status === 0 && run("git", ["show-ref", "--verify", "--quiet", remoteRef], { allowFail: true }).status === 0;
+
+		if (hasLocal) {
+			run("git", ["worktree", "add", worktreeDir, "pr-screenshots"]);
+			worktreeAdded = true;
+			if (hasRemote) run("git", ["-C", worktreeDir, "merge", "--ff-only", remoteRef], { allowFail: true });
+		} else if (hasRemote) {
+			run("git", ["worktree", "add", "-b", "pr-screenshots", worktreeDir, remoteRef]);
+			worktreeAdded = true;
+		} else {
+			run("git", ["worktree", "add", "--orphan", "-b", "pr-screenshots", worktreeDir]);
+			worktreeAdded = true;
+		}
+
+		const destDir = resolve(worktreeDir, branchDir);
+		const rel = relative(worktreeDir, destDir);
+		if (!rel || rel.startsWith("..") || resolve(rel) === rel) {
+			fail("validate destination", destDir, "escapes worktree directory", "Use a valid relative branch name.");
+		}
+		mkdirSync(destDir, { recursive: true });
+		const previews = {};
+		for (const src of inputs) {
+			const name = basename(src);
+			copyFileSync(src, join(destDir, name));
+			const p = makePreview(src, join(previewDir, `${name.replace(/\.[^.]+$/, "")}.jpg`));
+			if (p) previews[name] = p;
+		}
+
+		run("git", ["-C", worktreeDir, "add", "-A"]);
+		const hasChanges = run("git", ["-C", worktreeDir, "diff", "--cached", "--quiet"], { allowFail: true }).status !== 0;
+		if (hasChanges) {
+			run("git", ["-C", worktreeDir, "commit", "-m", `Screenshots for ${branchDir}`]);
+		}
+		if (!v["no-push"]) {
+			run("git", ["-C", worktreeDir, "push", "-u", v.remote, "pr-screenshots"]);
+		}
+		const sha = run("git", ["-C", worktreeDir, "rev-parse", "HEAD"]).stdout.trim();
+		const { markdown, urls } = buildTable(repo, sha, branchDir, fileNames);
+		const payload = { sha, repo, branchDir, pushed: !v["no-push"], files: fileNames, urls, previews, markdown };
+		if (v.json) {
+			console.log(JSON.stringify(payload, null, 2));
+		} else {
+			console.log(markdown);
+			console.log("\n---\n" + JSON.stringify({ sha, pushed: !v["no-push"], previews }, null, 2));
+		}
+	} finally {
+		if (worktreeAdded) run("git", ["worktree", "remove", "--force", worktreeDir], { allowFail: true });
+		rmSync(worktreeDir, { recursive: true, force: true });
+	}
+}
+
+try {
+	main();
+} catch (err) {
+	console.error(err instanceof CliError ? err.message : `pr-shots: unexpected error: ${err?.message || err}`);
+	process.exitCode = 1;
+}

@@ -1,0 +1,215 @@
+#!/usr/bin/env node
+// Deterministic builder/cleaner for /tmp/brief-<slug>/ delegation evidence packs.
+// Writes range.diff, checks.txt, and a structured context.md so children never start with missing files.
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
+import { reviewPoolForParent } from "../lib/guards/delegate.ts";
+
+const VALID_SLUG = /^[A-Za-z0-9._-]+$/;
+const USAGE = `Usage:
+  brief-init <slug> [--base <ref>] [--head <ref>] [--cmd "<check>"]...
+                    [--goal "<text>"] [--pass "<text>"] [--out-of-scope "<text>"]
+                    [--review [--parent-model <model>]] [--local] [--allow-empty] [--force]
+  brief-init review-targets [--parent-model <model>]
+  brief-init clean <slug> [--local]`;
+
+function fail(operation, target, cause, recovery) {
+	console.error(`brief-init: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+	process.exit(1);
+}
+
+function validateSlug(slug) {
+	if (!slug || !VALID_SLUG.test(slug) || slug === "." || slug === "..") {
+		fail("validate slug", slug || "(empty)", "invalid slug", 'Use letters, digits, ".", "_", or "-".');
+	}
+	return slug;
+}
+
+function git(args, allowFail = false) {
+	const res = spawnSync("git", args, { encoding: "utf8" });
+	if (res.status !== 0) {
+		if (allowFail) return null;
+		fail("run git", `git ${args.join(" ")}`, (res.stderr || res.stdout || `exit ${res.status}`).trim(), "Run from inside a git repository with a valid ref.");
+	}
+	return res.stdout;
+}
+
+function detectBase() {
+	for (const candidate of ["origin/HEAD", "origin/main", "origin/master", "main", "master"]) {
+		const mb = git(["merge-base", "HEAD", candidate], true)?.trim();
+		if (mb) return mb;
+	}
+	const upstream = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], true)?.trim();
+	if (upstream) {
+		const mb = git(["merge-base", "HEAD", upstream], true)?.trim();
+		if (mb) return mb;
+	}
+	return "HEAD";
+}
+
+function resolveBriefDir(slug, local) {
+	if (!local) return `/tmp/brief-${slug}`;
+	const top = git(["rev-parse", "--show-toplevel"], true)?.trim();
+	return join(top || process.cwd(), ".briefs", slug);
+}
+
+const raw = process.argv.slice(2);
+if (raw.length === 0 || raw[0] === "-h" || raw[0] === "--help") {
+	console.log(USAGE);
+	process.exit(0);
+}
+
+if (raw[0] === "review-targets") {
+	let sub;
+	try {
+		sub = parseArgs({ args: raw.slice(1), options: { "parent-model": { type: "string" } }, allowPositionals: true });
+	} catch (err) {
+		fail("parse arguments", "review-targets", err.message, "Pass `brief-init review-targets [--parent-model <model>]`.");
+	}
+	const parentModel = sub.values["parent-model"] || sub.positionals[0] || "";
+	console.log(JSON.stringify({ parentModel: parentModel || null, targets: reviewPoolForParent(parentModel) }, null, 2));
+	process.exit(0);
+}
+
+if (raw[0] === "clean") {
+	const cleanLocal = raw.includes("--local");
+	const cleanPos = raw.slice(1).filter((a) => a !== "--local");
+	const slug = validateSlug(cleanPos[0]);
+	const dir = resolveBriefDir(slug, cleanLocal);
+	if (!existsSync(dir)) {
+		console.log(`Already clean: ${dir} does not exist.`);
+		process.exit(0);
+	}
+	rmSync(dir, { recursive: true, force: true });
+	console.log(`Removed ${dir}.`);
+	process.exit(0);
+}
+
+let parsed;
+try {
+	parsed = parseArgs({
+		args: raw,
+		options: {
+			base: { type: "string" },
+			head: { type: "string" },
+			cmd: { type: "string", multiple: true },
+			goal: { type: "string" },
+			pass: { type: "string" },
+			"out-of-scope": { type: "string" },
+			review: { type: "boolean", default: false },
+			"parent-model": { type: "string" },
+			local: { type: "boolean", default: false },
+			"allow-empty": { type: "boolean", default: false },
+			force: { type: "boolean", default: false },
+		},
+		allowPositionals: true,
+	});
+} catch (err) {
+	fail("parse arguments", "brief-init", err.message, "Run `brief-init --help` for valid flags.");
+}
+
+const slug = validateSlug(parsed.positionals[0]);
+const v = parsed.values;
+const dir = resolveBriefDir(slug, v.local);
+
+const base = v.base || detectBase();
+const diffArgs = v.head ? ["diff", base, v.head] : ["diff", base];
+const diff = git(diffArgs);
+if (!diff.trim() && !v["allow-empty"]) {
+	fail(
+		"build range.diff",
+		`${base}${v.head ? `..${v.head}` : " (working tree)"}`,
+		"diff is empty",
+		"Pass --base <ref> (and optionally --head <ref>), or --allow-empty if no diff is expected.",
+	);
+}
+
+mkdirSync(dir, { recursive: true });
+const diffPath = join(dir, "range.diff");
+writeFileSync(diffPath, diff);
+
+const checksPath = join(dir, "checks.txt");
+const cmds = v.cmd ?? [];
+const checkSections = [];
+for (const command of cmds) {
+	const res = spawnSync("/bin/sh", ["-c", command], { encoding: "utf8" });
+	checkSections.push(
+		[
+			`$ ${command}`,
+			`exit: ${res.status ?? "signal"}`,
+			(res.stdout || "").trimEnd(),
+			res.stderr ? `--- stderr ---\n${res.stderr.trimEnd()}` : "",
+		]
+			.filter(Boolean)
+			.join("\n"),
+	);
+}
+if (checkSections.length > 0) {
+	writeFileSync(checksPath, checkSections.join("\n\n===\n\n") + "\n");
+} else if (!existsSync(checksPath) || v.force) {
+	writeFileSync(checksPath, "# No --cmd passed to brief-init. Paste real check output here before launching children.\n");
+}
+
+const contextPath = join(dir, "context.md");
+if (!existsSync(contextPath) || v.force) {
+	const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
+	const branch = git(["branch", "--show-current"], true)?.trim() || "(detached)";
+	const reviewBlock = v.review
+		? [
+				"",
+				"## Invariants checked before review (mark proof in checks.txt, or N/A with reason)",
+				"- [ ] **Concurrency & stale state:** overlapping refreshes, retries, or out-of-order events cannot overwrite newer state.",
+				"- [ ] **Account & workspace boundary:** sign-out, workspace switch, or removed member cannot leak cached data or queued writes.",
+				"- [ ] **Narrow UI & focus (when UI changes):** 320–440 px layout fits, sticky headers do not cover actions/matches, and polling preserves keyboard focus.",
+				"",
+				"## Review focus",
+				"- **Matters:** <2–4 concrete risks that would make this change unsafe to ship>",
+				"- **Not a finding:** anything in `Not building`, internal tools, style, or explicit non-goals",
+				"- **P1 means:** <harm that blocks merge; everything else is P2>",
+				"- **Origin:** set `diff` when the change caused it, made it worse, or made it newly reachable; `existing` when on base branch and unaffected.",
+			].join("\n")
+		: "";
+	const context = [
+		`# Brief: ${slug}`,
+		"",
+		`- Repo: \`${repoRoot}\` (branch \`${branch}\`)`,
+		`- Diff: \`${diffPath}\` (\`git ${diffArgs.join(" ")}\`)`,
+		`- Checks: \`${checksPath}\``,
+		"",
+		"## Goal",
+		v.goal || "<State the goal and why.>",
+		"",
+		"## Decisions made",
+		"- <Decisions already settled that the child must not reopen.>",
+		"",
+		"## Pass signal",
+		v.pass || "Goal → Check → Pass signal",
+		"",
+		"## Not building (scope lock)",
+		v["out-of-scope"]
+			? (v["out-of-scope"].trimStart().startsWith("-") ? v["out-of-scope"] : `- ${v["out-of-scope"]}`)
+			: "- <List adjacent controls, endpoints, or refactors intentionally excluded. Builders must not add them; reviewers must not request them.>",
+		reviewBlock,
+		"",
+	].join("\n");
+	writeFileSync(contextPath, context);
+}
+
+const reviewTargets = v.review ? reviewPoolForParent(v["parent-model"]) : null;
+console.log(
+	JSON.stringify(
+		{
+			dir,
+			context: contextPath,
+			diff: diffPath,
+			diffBytes: Buffer.byteLength(diff, "utf8"),
+			checks: checksPath,
+			commandsRun: cmds.length,
+			...(reviewTargets ? { reviewTargets } : {}),
+		},
+		null,
+		2,
+	),
+);

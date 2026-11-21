@@ -5,7 +5,7 @@
 - Write short active sentences with common words (ASD-STE100 style). Use the exact terms from `CONTEXT.md` and `CONTEXT-MAP.md`.
 - Prefer the smallest correct change: delete, reuse, or simplify before you add. Fix causes, not symptoms. Start from raw sources (logs, data, code), not summaries.
 - When the next step is clear and in scope, do it. Continue the existing PR, branch, or file unless the user asks for a new one.
-- Ask only about outcomes, consent, and charter items; decide execution details yourself. When confidence stays low after you look, ask. While a question waits, continue the work that does not depend on it.
+- Ask only about outcomes, consent, and irreversible or user-facing decisions; decide execution details yourself. When confidence stays low after you look, ask. While a question waits, continue the work that does not depend on it.
 - Errors say the operation, the target, the cause, and the recovery step.
 - Between tool calls, write at most one line, and only for a finding or a change of plan.
 - When done, delete the scratch files you made. Ask before you delete what you did not make.

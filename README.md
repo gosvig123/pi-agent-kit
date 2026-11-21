@@ -98,6 +98,8 @@ Remove any package with `pi remove <source>`.
 
 **Updates.** `bin/pi-up` updates Pi and every package, then starts Pi once in print mode to prove all extensions load. It handles both installs: Pi in a private npm prefix (it relinks `pi` when another package ships an old `pi` bin) and a global npm install. `pi-up --host <ssh-host>` does the same on another machine; the host needs only Pi. Put it on PATH (`ln -s "$PWD/bin/pi-up" ~/.local/bin/pi-up`), and schedule it weekly with T3 Code `schedule_task` if you want automatic updates. Exit code 1 means a machine failed; the output names the extension or login that broke.
 
+**Same rules and skills in other agents.** `bin/pi-sync-providers` shares `AGENTS.md` and every Pi skill with Claude Code, Codex, and Antigravity (for example in T3 Code). Claude Code imports the rules live through `~/.claude/CLAUDE.md`; Codex and Antigravity get generated copies (`~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`), so run it again after you edit `AGENTS.md` or add a skill. `providers/ADAPTER.md` maps Pi-only tools to the tools those agents have. Old files go to a `.pre-pi-sync.<time>` backup or the Trash.
+
 **AI commit messages in lazygit.** `bin/pi-commit` writes a commit message for the staged diff through the `anthropic` provider, then opens it in `$EDITOR`. Add to lazygit's `config.yml`:
 
 ```yaml

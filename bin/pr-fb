@@ -1,0 +1,262 @@
+#!/usr/bin/env node
+// Deterministic GitHub PR feedback plumbing for /pr-feedback:
+// - `collect`: paginates unresolved inline threads + review comments, classifies bots vs humans, skips non-review bots.
+// - `reply`: enforces pushed-SHA check on fixes, derives isBot strictly from GitHub in live mode,
+//   formats the 🤖 agent header, and resolves ONLY fixes, approved follow-ups, and declined bot threads.
+import { spawnSync } from "node:child_process";
+import { parseArgs } from "node:util";
+
+const DEFAULT_IGNORED_BOTS = ["vercel", "netlify", "cloudflare-pages", "linear", "codecov", "dependabot"];
+const EXTRA_IGNORED_BOTS = (process.env.PR_FB_IGNORE_BOTS || "")
+	.split(",")
+	.map((s) => s.trim().toLowerCase())
+	.filter(Boolean);
+const NON_REVIEW_BOTS = new Set([...DEFAULT_IGNORED_BOTS, ...EXTRA_IGNORED_BOTS]);
+const BOT_LOGIN = /(\[bot\]$|copilot|greptile|coderabbit|github-actions|qodo|sourcery|sonarcloud|reviewdog)/i;
+const VALID_SHA = /^[0-9a-f]{7,40}$/i;
+const VALID_DIGITS = /^\d+$/;
+
+const USAGE = `Usage:
+  pr-fb collect [pr-number] [--repo <owner/repo>] [--markdown]
+  pr-fb reply   [pr-number] --thread <threadId> --decision fix|decline|followup|ask --text "<reason>"
+                [--sha <hex-sha>] [--issue <url-or-key>] [--comment-id <databaseId>]
+                [--agent-name "<name>"] [--repo <owner/repo>] [--dry-run [--is-bot true|false]]`;
+
+function fail(operation, target, cause, recovery) {
+	console.error(`pr-fb: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+	process.exit(1);
+}
+
+function run(cmd, args, opts = {}) {
+	const res = spawnSync(cmd, args, { encoding: "utf8", ...opts });
+	if (res.status !== 0 && !opts.allowFail) {
+		fail(
+			`run ${cmd}`,
+			`${cmd} ${args.join(" ")}`,
+			(res.stderr || res.stdout || `exit ${res.status}`).trim(),
+			opts.recovery || "Verify gh auth and PR number, then retry.",
+		);
+	}
+	return res;
+}
+
+function isBotAuthor(author) {
+	if (!author) return false;
+	return author.__typename === "Bot" || BOT_LOGIN.test(author.login || "");
+}
+
+function resolvePrAndRepo(prArg, repoArg) {
+	if (prArg !== undefined && prArg !== null && !VALID_DIGITS.test(String(prArg))) {
+		fail("validate PR number", String(prArg), "must be numeric", "Pass a numeric PR number.");
+	}
+	const viewArgs = ["pr", "view", ...(prArg ? [String(prArg)] : []), ...(repoArg ? ["-R", repoArg] : []), "--json", "number,url,headRefName,headRefOid,reviews,comments,reviewRequests"];
+	const raw = run("gh", viewArgs, { recovery: "Pass a PR number or run from a branch with an open PR." }).stdout;
+	const pr = JSON.parse(raw);
+	const m = /github\.com\/([^/]+)\/([^/]+)\/pull\/\d+/i.exec(pr.url || "");
+	if (!m) fail("parse PR URL", pr.url || "(empty)", "could not extract owner/repo", "Pass --repo <owner/repo>.");
+	return { pr, owner: m[1], repo: m[2] };
+}
+
+function fetchThreads(owner, repo, number) {
+	const query = `query($o:String!,$r:String!,$n:Int!,$cursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$cursor){pageInfo{hasNextPage endCursor}nodes{id isResolved isOutdated path line comments(first:20){nodes{databaseId author{__typename login} body url}}}}}}}`;
+	const all = [];
+	let cursor = null;
+	for (let page = 0; page < 20; page++) {
+		const args = ["api", "graphql", "-f", `query=${query}`, "-f", `o=${owner}`, "-f", `r=${repo}`, "-F", `n=${number}`];
+		if (cursor) args.push("-f", `cursor=${cursor}`);
+		const out = run("gh", args).stdout;
+		const conn = JSON.parse(out)?.data?.repository?.pullRequest?.reviewThreads;
+		if (!conn) break;
+		all.push(...(conn.nodes ?? []));
+		if (!conn.pageInfo?.hasNextPage || !conn.pageInfo?.endCursor) break;
+		cursor = conn.pageInfo.endCursor;
+	}
+	return all;
+}
+
+function verifyShaPushed(sha, owner, repo, prHeadOid) {
+	if (!VALID_SHA.test(sha)) {
+		fail("validate commit SHA", sha, "must be a 7–40 character hex commit SHA", "Pass a real commit SHA from `git rev-parse --short HEAD`.");
+	}
+	if (prHeadOid && prHeadOid.toLowerCase().startsWith(sha.toLowerCase())) return;
+	const res = run("gh", ["api", `repos/${owner}/${repo}/commits/${sha}`, "--jq", ".sha"], { allowFail: true });
+	if (res.status !== 0 || !res.stdout.trim()) {
+		fail("verify pushed commit", sha, "commit is not on GitHub yet", "Run `git push` first, then run `pr-fb reply`.");
+	}
+}
+
+export function shouldResolveThread(decision, isBot, hasIssue) {
+	if (decision === "fix") return true;
+	if (decision === "decline") return Boolean(isBot);
+	if (decision === "followup") return Boolean(hasIssue);
+	return false; // ask: never resolve
+}
+
+export function formatReplyBody({ agentName, login, decision, text, sha, issue }) {
+	const header = `🤖 *${agentName}, replying on behalf of @${login}.*`;
+	let line;
+	if (decision === "fix") line = `Fixed in ${sha}: ${text}`;
+	else if (decision === "decline") line = `Not changing: ${text}`;
+	else if (decision === "followup") line = `Not caused by this PR; tracked in ${issue}.${text ? ` ${text}` : ""}`;
+	else if (decision === "ask") line = `Open for @${login} to decide: ${text}`;
+	else fail("format reply", decision, "invalid decision", "Use fix, decline, followup, or ask.");
+	return `${header}\n\n${line}`;
+}
+
+const [cmd, ...rest] = process.argv.slice(2);
+if (!cmd || cmd === "-h" || cmd === "--help") {
+	console.log(USAGE);
+	process.exit(0);
+}
+
+if (cmd === "collect") {
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args: rest,
+			options: {
+				repo: { type: "string" },
+				markdown: { type: "boolean", default: false },
+			},
+			allowPositionals: true,
+		});
+	} catch (err) {
+		fail("parse arguments", "collect", err.message, "Run `pr-fb --help` for valid flags.");
+	}
+	const { pr, owner, repo } = resolvePrAndRepo(parsed.positionals[0], parsed.values.repo);
+	const rawThreads = fetchThreads(owner, repo, pr.number);
+	const threads = rawThreads
+		.filter((t) => !t.isResolved)
+		.map((t) => {
+			const comments = t.comments?.nodes ?? [];
+			const first = comments[0];
+			const authorLogin = first?.author?.login || "unknown";
+			return {
+				threadId: t.id,
+				firstCommentId: first?.databaseId ?? null,
+				path: t.path,
+				line: t.line,
+				isOutdated: t.isOutdated,
+				author: authorLogin,
+				isBot: isBotAuthor(first?.author),
+				url: first?.url ?? null,
+				comments: comments.map((c) => ({ id: c.databaseId, author: c.author?.login || "unknown", body: c.body })),
+			};
+		})
+		.filter((t) => !NON_REVIEW_BOTS.has(t.author.replace(/\[bot\]$/i, "").toLowerCase()));
+
+	const reviewBodies = (pr.reviews ?? [])
+		.filter((r) => r.body && r.body.trim() && !NON_REVIEW_BOTS.has((r.author?.login || "").replace(/\[bot\]$/i, "").toLowerCase()))
+		.map((r) => ({ author: r.author?.login || "unknown", state: r.state, body: r.body }));
+
+	const issueComments = (pr.comments ?? [])
+		.filter((c) => c.body && c.body.trim() && !NON_REVIEW_BOTS.has((c.author?.login || "").replace(/\[bot\]$/i, "").toLowerCase()))
+		.map((c) => ({ author: c.author?.login || "unknown", url: c.url, body: c.body }));
+
+	const payload = {
+		pr: { number: pr.number, url: pr.url, repo: `${owner}/${repo}`, headRefName: pr.headRefName, headRefOid: pr.headRefOid },
+		unresolvedThreads: threads,
+		reviewBodies,
+		issueComments,
+	};
+
+	if (parsed.values.markdown) {
+		console.log(`# PR #${pr.number} (${owner}/${repo}) — ${threads.length} unresolved thread(s)\n`);
+		for (const t of threads) {
+			console.log(`- \`${t.threadId}\` (${t.isBot ? "bot" : "human"} @${t.author}) \`${t.path}:${t.line ?? "?"}\` comment=${t.firstCommentId}\n  ${t.comments[0]?.body.split("\n")[0] ?? ""}`);
+		}
+	} else {
+		console.log(JSON.stringify(payload, null, 2));
+	}
+} else if (cmd === "reply") {
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args: rest,
+			options: {
+				thread: { type: "string" },
+				decision: { type: "string" },
+				text: { type: "string" },
+				sha: { type: "string" },
+				issue: { type: "string" },
+				"comment-id": { type: "string" },
+				"is-bot": { type: "string" },
+				"agent-name": { type: "string", default: "Agent" },
+				login: { type: "string" },
+				repo: { type: "string" },
+				"dry-run": { type: "boolean", default: false },
+			},
+			allowPositionals: true,
+		});
+	} catch (err) {
+		fail("parse arguments", "reply", err.message, "Run `pr-fb --help` for valid flags.");
+	}
+	const v = parsed.values;
+	if (!v.thread) fail("validate input", "--thread", "missing GraphQL thread ID", "Pass --thread PRRT_... from `pr-fb collect`.");
+	if (!["fix", "decline", "followup", "ask"].includes(v.decision || "")) {
+		fail("validate decision", v.decision || "(empty)", "must be fix, decline, followup, or ask", "Pass --decision fix|decline|followup|ask.");
+	}
+	if (!v.text && v.decision !== "followup") fail("validate input", "--text", "missing reply text", "Pass --text \"<reason/change>\".");
+	if (v.decision === "followup" && !v.issue) {
+		fail("validate followup", v.thread, "missing --issue <link>", "Get user approval and create the issue first; do not reply before the issue exists.");
+	}
+	if (v["comment-id"] && !VALID_DIGITS.test(v["comment-id"])) {
+		fail("validate comment ID", v["comment-id"], "must be numeric", "Pass the numeric databaseId from `pr-fb collect`.");
+	}
+
+	const sha = v.decision === "fix" ? (v.sha || run("git", ["rev-parse", "--short", "HEAD"]).stdout.trim()) : undefined;
+	if (v.decision === "fix" && (!sha || !VALID_SHA.test(sha))) {
+		fail("validate commit SHA", sha || "(empty)", "must be a 7–40 character hex commit SHA", "Pass --sha <short-sha>.");
+	}
+	const dry = v["dry-run"];
+
+	let owner = null, repo = null, prNumber = parsed.positionals[0] || null, prHeadOid = null;
+	let commentId = v["comment-id"] || null;
+	let isBot = false;
+
+	if (!dry) {
+		if (v["is-bot"] !== undefined) {
+			fail("validate flags", "--is-bot", "--is-bot is only allowed with --dry-run", "Omit --is-bot in live mode so author type is derived from GitHub.");
+		}
+		const resolved = resolvePrAndRepo(prNumber, v.repo);
+		owner = resolved.owner;
+		repo = resolved.repo;
+		prNumber = resolved.pr.number;
+		prHeadOid = resolved.pr.headRefOid;
+		if (v.decision === "fix") verifyShaPushed(sha, owner, repo, prHeadOid);
+
+		// Always derive author type (bot vs human) from GitHub so a flag cannot resolve a human's declined thread.
+		const match = fetchThreads(owner, repo, prNumber).find((t) => t.id === v.thread);
+		if (!match) fail("find thread", v.thread, `not found on PR #${prNumber}`, "Run `pr-fb collect` and pass a valid threadId.");
+		const first = match.comments?.nodes?.[0];
+		if (!commentId) commentId = first?.databaseId ? String(first.databaseId) : null;
+		isBot = isBotAuthor(first?.author);
+		if (!commentId || !VALID_DIGITS.test(commentId)) {
+			fail("resolve comment ID", v.thread, "thread has no valid numeric first comment databaseId", "Pass --comment-id <databaseId>.");
+		}
+	} else {
+		isBot = v["is-bot"] === "true";
+	}
+
+	const login = v.login || (dry ? "user" : run("gh", ["api", "user", "--jq", ".login"]).stdout.trim());
+	const body = formatReplyBody({ agentName: v["agent-name"], login, decision: v.decision, text: v.text || "", sha, issue: v.issue });
+	const resolveThread = shouldResolveThread(v.decision, isBot, Boolean(v.issue));
+
+	if (dry) {
+		console.log(JSON.stringify({ dryRun: true, threadId: v.thread, commentId, decision: v.decision, isBot, resolveThread, body }, null, 2));
+		process.exit(0);
+	}
+
+	const replyRes = run("gh", ["api", `repos/${owner}/${repo}/pulls/${prNumber}/comments/${commentId}/replies`, "-f", `body=${body}`]);
+	const replyUrl = JSON.parse(replyRes.stdout).html_url;
+
+	let resolvedState = false;
+	if (resolveThread) {
+		const mut = `mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}`;
+		const resOut = run("gh", ["api", "graphql", "-f", `query=${mut}`, "-f", `id=${v.thread}`]).stdout;
+		resolvedState = Boolean(JSON.parse(resOut)?.data?.resolveReviewThread?.thread?.isResolved);
+	}
+	console.log(JSON.stringify({ pr: prNumber, threadId: v.thread, decision: v.decision, isBot, replyUrl, resolved: resolvedState }, null, 2));
+} else {
+	fail("dispatch command", cmd, "unknown subcommand", "Use `collect` or `reply`.");
+}

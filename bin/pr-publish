@@ -1,0 +1,191 @@
+#!/usr/bin/env node
+// Deterministic PR gatekeeper: validates Mermaid diagrams (static lint + GitHub /markdown render),
+// keeps UI PRs as drafts when screenshots are missing, blocks marking ready without screenshots,
+// and reports Linear keys for follow-up comment sync.
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { parseArgs } from "node:util";
+import { checkPrBody } from "../lib/pr-body-check.ts";
+
+const USAGE = `Usage:
+  pr-publish check  --body-file <path> [--base <ref>] [--title <title>] [--allow-no-diagram] [--allow-no-screenshots] [--skip-markdown-api] [--json]
+  pr-publish create --title <title> --body-file <path> [--base <ref>] [--draft] [--allow-no-diagram] [--allow-no-screenshots] [--skip-markdown-api] [--dry-run]
+  pr-publish edit   <pr-number> --body-file <path> [--title <title>] [--ready] [--base <ref>] [--allow-no-diagram] [--allow-no-screenshots] [--skip-markdown-api] [--dry-run]`;
+
+function fail(operation, target, cause, recovery) {
+	console.error(`pr-publish: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+	process.exit(1);
+}
+
+function run(cmd, args, opts = {}) {
+	return spawnSync(cmd, args, { encoding: "utf8", ...opts });
+}
+
+function validateRef(ref) {
+	if (!ref || ref.startsWith("-")) {
+		fail("validate base ref", ref || "(empty)", "ref must not start with '-'", "Pass a valid branch or commit ref.");
+	}
+	return ref;
+}
+
+function detectBase() {
+	for (const ref of ["origin/HEAD", "origin/main", "origin/master", "main", "master"]) {
+		if (run("git", ["rev-parse", "--verify", "--quiet", ref]).status === 0) return ref;
+	}
+	return "HEAD~1";
+}
+
+function changedFilesFromGit(base) {
+	validateRef(base);
+	const candidates = [base, ...(base.includes("/") ? [] : [`origin/${base}`])];
+	for (const ref of candidates) {
+		const res = run("git", ["diff", "--name-only", `${ref}...HEAD`, "--"]);
+		if (res.status === 0) return res.stdout.split("\n").map((s) => s.trim()).filter(Boolean);
+	}
+	fail("list changed files", `${base}...HEAD`, "git diff failed for base ref", "Fetch the base branch or pass a valid --base <ref>.");
+}
+
+function changedFilesFromPr(prNum) {
+	const res = run("gh", ["pr", "view", String(prNum), "--json", "files", "--jq", ".files[].path"]);
+	if (res.status !== 0) {
+		fail("fetch PR files", `PR #${prNum}`, (res.stderr || res.stdout || `exit ${res.status}`).trim(), "Verify PR number and gh auth, then retry.");
+	}
+	return res.stdout.split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
+function validateGitHubMarkdown(body) {
+	const res = run("gh", ["api", "/markdown", "-f", `text=${body}`, "-f", "mode=gfm"]);
+	if (res.status !== 0) {
+		return `gh api /markdown failed: ${(res.stderr || res.stdout || `exit ${res.status}`).trim()}`;
+	}
+	if (!res.stdout.includes("mermaid")) {
+		return "GitHub /markdown output did not contain a rendered mermaid block.";
+	}
+	return null;
+}
+
+const [cmd, ...rest] = process.argv.slice(2);
+if (!cmd || cmd === "-h" || cmd === "--help") {
+	console.log(USAGE);
+	process.exit(0);
+}
+if (!["check", "create", "edit"].includes(cmd)) {
+	fail("dispatch command", cmd, "unknown subcommand", "Use `check`, `create`, or `edit`.");
+}
+
+let parsed;
+try {
+	parsed = parseArgs({
+		args: rest,
+		options: {
+			"body-file": { type: "string" },
+			title: { type: "string" },
+			base: { type: "string" },
+			draft: { type: "boolean", default: false },
+			ready: { type: "boolean", default: false },
+			"allow-no-diagram": { type: "boolean", default: false },
+			"allow-no-screenshots": { type: "boolean", default: false },
+			"skip-markdown-api": { type: "boolean", default: false },
+			"dry-run": { type: "boolean", default: false },
+			json: { type: "boolean", default: false },
+		},
+		allowPositionals: true,
+	});
+} catch (err) {
+	fail("parse arguments", cmd, err.message, "Run `pr-publish --help` for valid flags.");
+}
+
+const v = parsed.values;
+if (!v["body-file"]) fail("validate input", "--body-file", "missing PR body file", "Write the PR body to a file and pass --body-file <path>.");
+const bodyFile = resolve(v["body-file"]);
+if (!existsSync(bodyFile)) fail("read body file", bodyFile, "file does not exist", "Check the path and retry.");
+const body = readFileSync(bodyFile, "utf8");
+
+const prNum = cmd === "edit" ? parsed.positionals[0] : null;
+if (cmd === "edit" && (!prNum || !/^\d+$/.test(prNum))) {
+	fail("validate input", "pr-number", "missing or non-numeric PR number", "Pass `pr-publish edit <pr-number> --body-file <path>`.");
+}
+
+const base = v.base ? validateRef(v.base) : detectBase();
+const branch = run("git", ["branch", "--show-current"]).stdout.trim();
+// For live `edit`, always read the PR's actual changed files from GitHub so running from `main` cannot bypass the UI screenshot gate.
+const files = cmd === "edit" && !v["dry-run"] ? changedFilesFromPr(prNum) : changedFilesFromGit(base);
+
+const result = checkPrBody({
+	body,
+	changedFiles: files,
+	title: v.title,
+	branch,
+	allowNoDiagram: v["allow-no-diagram"],
+	allowNoScreenshots: v["allow-no-screenshots"],
+});
+
+if (result.ok && result.mermaidBlocks.length > 0 && !v["skip-markdown-api"]) {
+	const mdErr = validateGitHubMarkdown(body);
+	if (mdErr) {
+		result.errors.push(mdErr);
+		result.ok = false;
+	}
+}
+
+if (cmd === "check") {
+	if (v.json) {
+		console.log(JSON.stringify(result, null, 2));
+	} else {
+		for (const e of result.errors) console.error(`ERROR: ${e}`);
+		for (const w of result.warnings) console.warn(`WARN: ${w}`);
+		if (result.ok) {
+			console.log(`OK: ${result.mermaidBlocks.length} mermaid block(s), ${result.uiFiles.length} UI file(s), forceDraft=${result.forceDraft}, linearKeys=[${result.linearKeys.join(", ")}]`);
+			if (result.usesClassDef) console.log("NOTE: Diagram uses classDef — verify light/dark legibility in a browser.");
+		}
+	}
+	process.exit(result.ok ? 0 : 1);
+}
+
+if (!result.ok) {
+	for (const e of result.errors) console.error(`ERROR: ${e}`);
+	fail("validate PR body", bodyFile, `${result.errors.length} check(s) failed`, "Fix the errors above and re-run pr-publish.");
+}
+
+if (cmd === "create") {
+	if (!v.title) fail("validate input", "--title", "missing PR title", "Pass --title <title>.");
+	const isDraft = v.draft || result.forceDraft;
+	if (result.forceDraft && !v.draft) {
+		console.warn(`WARN: ${result.warnings[0]} Forcing --draft.`);
+	}
+	const ghArgs = ["pr", "create", "--title", v.title, "--body-file", bodyFile];
+	if (v.base) ghArgs.push("--base", v.base.replace(/^origin\//, ""));
+	if (isDraft) ghArgs.push("--draft");
+	if (v["dry-run"]) {
+		console.log(JSON.stringify({ dryRun: true, command: ["gh", ...ghArgs], isDraft, linearKeys: result.linearKeys, warnings: result.warnings }, null, 2));
+		process.exit(0);
+	}
+	const created = run("gh", ghArgs);
+	if (created.status !== 0) {
+		fail("create PR", v.title, (created.stderr || created.stdout || `exit ${created.status}`).trim(), "Fix the gh error and retry.");
+	}
+	const url = created.stdout.trim();
+	console.log(JSON.stringify({ url, draft: isDraft, linearKeys: result.linearKeys, usesClassDef: result.usesClassDef, warnings: result.warnings }, null, 2));
+} else if (cmd === "edit") {
+	if (v.ready && result.forceDraft) {
+		fail("mark PR ready", `PR #${prNum}`, result.warnings[0], "Capture and embed before/after screenshots via `pr-shots publish` before passing --ready.");
+	}
+	const ghArgs = ["pr", "edit", prNum, "--body-file", bodyFile];
+	if (v.title) ghArgs.push("--title", v.title);
+	if (v["dry-run"]) {
+		console.log(JSON.stringify({ dryRun: true, commands: [["gh", ...ghArgs], ...(v.ready ? [["gh", "pr", "ready", prNum]] : [])], linearKeys: result.linearKeys, warnings: result.warnings }, null, 2));
+		process.exit(0);
+	}
+	const edited = run("gh", ghArgs);
+	if (edited.status !== 0) {
+		fail("edit PR", `PR #${prNum}`, (edited.stderr || edited.stdout || `exit ${edited.status}`).trim(), "Fix the gh error and retry.");
+	}
+	if (v.ready) {
+		const readyRes = run("gh", ["pr", "ready", prNum]);
+		if (readyRes.status !== 0) {
+			fail("mark PR ready", `PR #${prNum}`, (readyRes.stderr || readyRes.stdout || `exit ${readyRes.status}`).trim(), "Fix the gh error and retry.");
+		}
+	}
+	console.log(JSON.stringify({ pr: prNum, url: edited.stdout.trim(), markedReady: v.ready, linearKeys: result.linearKeys, usesClassDef: result.usesClassDef, warnings: result.warnings }, null, 2));
+}

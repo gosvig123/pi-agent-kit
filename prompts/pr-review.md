@@ -43,7 +43,7 @@ For deeper review, fetch or check out PR into a temporary worktree, then inspect
 | Security | auth, secrets, injection, PII, tenant isolation |
 | Simplicity | unnecessary code, over-abstraction, duplicated logic |
 | Maintainability | naming, boundaries, error handling, observability |
-| Tests | missing high-value coverage or brittle tests |
+| Verification | proof that the change works (PR checks, repro, screenshots) is missing or does not match the claim; missing tests are not a finding unless the author or user asked for tests |
 | Product risk | UX regressions, deploy risk, compatibility |
 
 In T3 Code, run the angles as parallel `delegate_task` reviewers. In the Pi terminal, run them yourself as separate passes.
@@ -60,7 +60,12 @@ Output only review findings in chat:
 
 ### Findings
 
-Group by severity.
+Split findings by origin, then group each part by severity:
+
+- **Caused by this PR:** the PR added the problem, or made an old one worse or newly reachable. Default: fix in this PR. These decide the verdict.
+- **Not caused: proposed issues:** the problem is on the base branch and the PR does not affect it. Default: a separate issue, not a change to this PR. Give each a draft issue title. These do not change the verdict.
+
+When unsure, a finding inside a changed hunk counts as caused. Record pre-existing problems in the code you read; do not search the repo for them.
 
 For each finding:
 - `Severity:` Critical / Important / Minor

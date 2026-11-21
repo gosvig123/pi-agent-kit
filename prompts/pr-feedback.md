@@ -22,7 +22,8 @@ This prompt is approval to push fix commits to the PR branch, reply on review th
 
 - Get `owner/repo`, head branch, and head SHA: `gh pr view $1 --json headRefName,headRefOid,url,reviewRequests,reviews`.
 - If the repo rules say Copilot reviews every PR (`AGENTS.md`, `docs/`), and the PR has no Copilot review or request, run `gh pr edit $1 --add-reviewer @copilot`. Check that it registered: `gh api repos/OWNER/REPO/issues/$1/timeline --jq '.[]|select(.event=="review_requested")|.requested_reviewer.login'` must list `Copilot`. If it does not (seen once: both `gh pr edit` and the REST `requested_reviewers` call returned success but did nothing), do not wait for Copilot. Report that the user must request it in the GitHub UI.
-- Wait in one bounded loop (20 min). Run it alone, not in a batch with quick calls. Exit when no review-bot check is pending and no bot review request is open:
+- In T3 Code: call `watch_pull_request` on the PR URL and end your turn to wait for new reviews or checks instead of polling.
+- Outside T3 Code (Pi terminal): wait in one bounded loop (20 min) until no review-bot check or bot review request is pending:
 
 ```bash
 end=$((SECONDS+1200))
@@ -38,13 +39,8 @@ do [ $SECONDS -ge $end ] && { echo "review wait timed out"; break; }; sleep 30; 
 
 ## 2. Collect
 
-- Inline threads:
+Run `pr-fb collect $1` (returns unresolved inline threads with `threadId`, `firstCommentId`, `isBot`, plus review bodies and PR comments, skipping non-review status bots).
 
-```bash
-gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{id isResolved isOutdated path line comments(first:20){nodes{databaseId author{login} body url}}}}}}}' -F o=OWNER -F r=REPO -F n=$1
-```
-
-- Keep the threads with `isResolved: false`. Also read the review bodies (`reviews`) and PR comments from reviewers (`gh pr view $1 --comments`). Skip status bots that do not review code (for example `hindsight-remotely`, deploy previews).
 - Read the whole comment, not only the title. Greptile and Copilot put the reason and the suggested fix in the body.
 
 ## 3. Evaluate
@@ -54,7 +50,8 @@ Judge each comment on evidence, not on the reviewer or the badge. Read the code 
 | Decision | When | Action |
 |---|---|---|
 | Fix | The claim is true, and the fix is in the scope of the PR | Smallest change that removes the problem |
-| Decline | The claim is false, out of date, out of scope, or against the repo or user rules | Reply with the reason and evidence (`path:line`, command output) |
+| Decline | The claim is false, out of date, or against the repo or user rules | Reply with the reason and evidence (`path:line`, command output) |
+| Follow-up | The claim is true, but the PR did not cause it: the problem is on the base branch and the PR does not make it worse or newly reachable | Do not change code. Draft an issue (title, `path:line`, proof, why it is separate). Create it (Linear by default, `work-items` skill) only after the user approves. |
 | Ask | Product, scope, architecture, or public API decision; or the fix needs a new dependency, migration, or destructive action | Do not change code. Leave the thread open. List it for the user. |
 
 - Bot suggestions are often generic. Do not apply a suggestion only because a bot made it.
@@ -70,34 +67,21 @@ Judge each comment on evidence, not on the reviewer or the badge. Read the code 
 
 ## 5. Reply and resolve
 
-Start every reply with this line, so readers know that an agent wrote it:
-
-```
-🤖 *Pi agent, replying on behalf of @<login>.*
-```
-
-Get `<login>` from `gh api user --jq .login`. Then add one line:
-
-- Fix: `Fixed in <short-sha>: <what changed>.`
-- Decline: `Not changing: <reason>. <evidence>.`
-- Ask: `Open for @<login> to decide: <the question>.`
-
-Reply to an inline thread: `gh api repos/OWNER/REPO/pulls/$1/comments/<first-comment-databaseId>/replies -f body="..."`. Reply to a review body or PR comment with `gh pr comment $1 --body "..."` and quote the point.
-
-Resolve the threads you fixed or declined:
+Use `pr-fb reply` for every inline thread (it checks that `--sha` is pushed, prepends `🤖 *<agent>, replying on behalf of @<login>.*`, and enforces resolution rules: resolves fixes, approved follow-ups, and declined bot threads; leaves human declines and `Ask` threads open):
 
 ```bash
-gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread-id>
+pr-fb reply $1 --thread <threadId> --decision fix      --sha <short-sha> --text "<what changed>"
+pr-fb reply $1 --thread <threadId> --decision decline  --text "<reason>. <evidence>."
+pr-fb reply $1 --thread <threadId> --decision followup --issue "<issue link>"   # only after user approves and issue exists
+pr-fb reply $1 --thread <threadId> --decision ask      --text "<the question>"
 ```
 
-- Leave **Ask** threads open.
-- Leave a person's thread open after you decline it, so that they can answer. Resolve a person's thread only after a fix.
-- Reply only after the push has succeeded, so that the SHA in the reply exists on GitHub.
+For a top-level review body or PR comment (not an inline thread), reply with `gh pr comment $1 --body "🤖 *Agent, replying on behalf of @<login>.*\n\n..."` and quote the point.
 
 ## 6. Re-review
 
 - After a push, bots may review again. Go back to step 1. Re-request Copilot only when the round changed code that it commented on.
-- Stop when there are no new unresolved threads, when only **Ask** items are left, or after 3 rounds.
+- Stop when there are no new unresolved threads, when only **Ask** and **Follow-up** items are left, or after 3 rounds.
 
 ## Report
 
@@ -106,10 +90,11 @@ gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$
 
 | Reviewer | Comment | Decision | Commit / reply |
 |---|---|---|---|
-| greptile-apps | `path:line` short title | Fix / Decline / Ask | `<sha>` · link |
+| greptile-apps | `path:line` short title | Fix / Decline / Follow-up / Ask | `<sha>` · link |
 
 Checks: <command → result>
 Open for you: <Ask items, each with the question>
+Issue drafts: <Follow-up items, each with title and `path:line`; approve to create them>
 ```
 
 Use ⚠️ instead of ✅ when a reviewer timed out or a check failed, and say which.

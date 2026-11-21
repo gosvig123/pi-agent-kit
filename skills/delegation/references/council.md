@@ -6,7 +6,7 @@ Three advisors answer one question on their own. The parent compares the answers
 
 | Advisor | `delegate_task` target |
 |---|---|
-| sol | `{"providerInstanceId": "pi", "model": "openai-codex/gpt-6.1-sol", "options": {"thinking": "xhigh"}}` |
+| sol | `{"providerInstanceId": "pi", "model": "openai-codex/gpt-6.2-sol", "options": {"thinking": "xhigh"}}` |
 | opus | `{"providerInstanceId": "pi", "model": "anthropic/claude-opus-5-5", "options": {"thinking": "xhigh"}}` |
 | opus-high | `{"providerInstanceId": "pi", "model": "anthropic/claude-opus-5-5", "options": {"thinking": "high"}}` |
 
