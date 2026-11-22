@@ -98,7 +98,12 @@ Remove any package with `pi remove <source>`.
 
 **Updates.** `bin/pi-up` updates Pi and every package, then starts Pi once in print mode to prove all extensions load. It handles both installs: Pi in a private npm prefix (it relinks `pi` when another package ships an old `pi` bin) and a global npm install. `pi-up --host <ssh-host>` does the same on another machine; the host needs only Pi. Put it on PATH (`ln -s "$PWD/bin/pi-up" ~/.local/bin/pi-up`), and schedule it weekly with T3 Code `schedule_task` if you want automatic updates. Exit code 1 means a machine failed; the output names the extension or login that broke.
 
-**Same rules and skills in other agents.** `bin/pi-sync-providers` shares `AGENTS.md` and every Pi skill with Claude Code, Codex, and Antigravity (for example in T3 Code). Claude Code imports the rules live through `~/.claude/CLAUDE.md`; Codex and Antigravity get generated copies (`~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`), so run it again after you edit `AGENTS.md` or add a skill. `providers/ADAPTER.md` maps Pi-only tools to the tools those agents have. Old files go to a `.pre-pi-sync.<time>` backup or the Trash.
+**Same rules and skills in other agents.** `bin/pi-sync-providers` shares `AGENTS.md`, every Pi skill, and every executable CLI in `bin/` (`~/.local/bin/`) with Claude Code, Codex, and Antigravity (for example in T3 Code). Claude Code imports the rules live through `~/.claude/CLAUDE.md`; Codex and Antigravity get generated copies (`~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`), so run it again after you edit `AGENTS.md` or add a skill. `providers/ADAPTER.md` maps Pi-only tools to the tools those agents have. Old files go to a `.pre-pi-sync.<time>` backup or the Trash.
+
+**Repo readiness and verification CLIs.**
+- `bin/repo-doctor` audits any git repo (or `--all <dir>`) for concise `AGENTS.md`, `CLAUDE.md` link, live doc-link verification (`AGENTS.md` / `CONTEXT.md`), `.briefs/` gitignore, 3-tier `verify:*` scripts, CI wiring, and worktree setup; `--fix` safely scaffolds missing basics without overwriting files.
+- `bin/verify-repo` runs a repo's `verify:fast`, `verify:all`, or `verify:live` command and writes a per-worktree commit/tree stamp checked by `bin/pr-publish`.
+- `bin/brief-init --review` inspects `range.diff` (and optional `.agent/invariants.json`) to inject only diff-relevant pre-review invariants.
 
 **AI commit messages in lazygit.** `bin/pi-commit` writes a commit message for the staged diff through the `anthropic` provider, then opens it in `$EDITOR`. Add to lazygit's `config.yml`:
 

@@ -1,0 +1,225 @@
+#!/usr/bin/env node
+// Runs a repo's 3-tier verification command (fast | all | live) and writes an atomic per-tier
+// commit/tree stamp inside the worktree's gitdir so `pr-publish` knows the exact code passed.
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { parseArgs } from "node:util";
+import {
+	checkVerifyStamp,
+	computeWorkingTreeHash,
+	discoverVerifyCommands,
+	resolveRepoRoot,
+	writeVerifyStamp,
+} from "../lib/verify-stamp.ts";
+
+const USAGE = `Usage:
+  verify-repo [fast|all|live] [--cwd <dir>] [--cmd "<override>"] [--status] [--json]`;
+const MAX_CAPTURE_BYTES = 256 * 1024;
+
+function fail(operation, target, cause, recovery) {
+	console.error(`verify-repo: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+	process.exit(1);
+}
+
+function appendBounded(buf, chunk) {
+	const next = buf + chunk;
+	if (Buffer.byteLength(next, "utf8") <= MAX_CAPTURE_BYTES) return next;
+	return next.slice(-MAX_CAPTURE_BYTES);
+}
+
+function runShell(command, cwd, capture) {
+	return new Promise((resolvePromise) => {
+		const child = spawn("/bin/sh", ["-c", command], {
+			cwd,
+			stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
+		});
+		let stdout = "";
+		let stderr = "";
+		let truncated = false;
+		if (capture) {
+			child.stdout.setEncoding("utf8");
+			child.stderr.setEncoding("utf8");
+			child.stdout.on("data", (chunk) => {
+				if (Buffer.byteLength(stdout, "utf8") + Buffer.byteLength(chunk, "utf8") > MAX_CAPTURE_BYTES) truncated = true;
+				stdout = appendBounded(stdout, chunk);
+			});
+			child.stderr.on("data", (chunk) => {
+				if (Buffer.byteLength(stderr, "utf8") + Buffer.byteLength(chunk, "utf8") > MAX_CAPTURE_BYTES) truncated = true;
+				stderr = appendBounded(stderr, chunk);
+			});
+		}
+		child.on("close", (code, signal) => {
+			resolvePromise({ status: code, signal, stdout, stderr, truncated });
+		});
+		child.on("error", (err) => {
+			resolvePromise({ status: 1, signal: null, stdout, stderr: err.message, truncated });
+		});
+	});
+}
+
+let parsed;
+try {
+	parsed = parseArgs({
+		args: process.argv.slice(2),
+		options: {
+			cwd: { type: "string" },
+			cmd: { type: "string" },
+			status: { type: "boolean", default: false },
+			json: { type: "boolean", default: false },
+			help: { type: "boolean", short: "h", default: false },
+		},
+		allowPositionals: true,
+	});
+} catch (err) {
+	fail("parse arguments", "verify-repo", err.message, "Run `verify-repo --help` for valid flags.");
+}
+
+if (parsed.values.help) {
+	console.log(USAGE);
+	process.exit(0);
+}
+
+const tier = parsed.positionals[0] ?? "all";
+if (tier !== "fast" && tier !== "all" && tier !== "live") {
+	fail("validate tier", tier, "unknown verification tier", "Use `fast`, `all`, or `live`.");
+}
+
+const targetDir = parsed.values.cwd ? resolve(parsed.values.cwd) : process.cwd();
+const repoRoot = resolveRepoRoot(targetDir);
+if (!repoRoot) {
+	fail("resolve git repository", targetDir, "not inside a git repository", "Run inside a git checkout or pass --cwd <repo-path>.");
+}
+
+const discovery = discoverVerifyCommands(repoRoot);
+
+if (parsed.values.status) {
+	const check = checkVerifyStamp(repoRoot, tier, { allowWorkingTree: true });
+	if (parsed.values.json) {
+		process.stdout.write(JSON.stringify({ repoRoot, tier, discovery, status: check }, null, 2) + "\n");
+	} else {
+		const icon = check.valid ? "OK" : "STALE";
+		console.log(`${icon}: ${check.reason}`);
+		for (const [k, info] of Object.entries(discovery.commands)) {
+			if (info) console.log(`  verify:${k} -> ${info.command} (${info.source})`);
+		}
+	}
+	process.exitCode = check.valid ? 0 : 1;
+} else {
+
+const configuredCmd = discovery.commands[tier]?.command ?? null;
+const overrideCmd = parsed.values.cmd?.trim() || null;
+const command = overrideCmd || configuredCmd;
+if (!command) {
+	fail(
+		`find verify:${tier} command`,
+		repoRoot,
+		`no verify:${tier} script found in package.json, Makefile, or scripts/`,
+		'Add a verify script (see `repo-doctor`) or pass `--cmd "<command>"`.',
+	);
+}
+const isOverride = Boolean(overrideCmd && overrideCmd !== configuredCmd);
+
+// Capture tree state BEFORE executing the check so files mutated during verification cannot be stamped.
+const before = computeWorkingTreeHash(repoRoot);
+if (before.hiddenPaths.length > 0) {
+	fail(
+		`snapshot working tree`,
+		repoRoot,
+		`tracked file(s) hidden by assume-unchanged or skip-worktree (${before.hiddenPaths.slice(0, 5).join(", ")})`,
+		"Clear assume-unchanged/skip-worktree flags with `git update-index --no-assume-unchanged --no-skip-worktree <path>` and retry.",
+	);
+}
+
+const start = Date.now();
+const res = await runShell(command, repoRoot, parsed.values.json);
+const durationMs = Date.now() - start;
+
+if (res.status !== 0) {
+	if (parsed.values.json) {
+		process.stdout.write(
+			JSON.stringify(
+				{
+					ok: false,
+					repoRoot,
+					tier,
+					command,
+					isOverride,
+					exitCode: res.status ?? 1,
+					durationMs,
+					truncated: res.truncated,
+					stdout: res.stdout,
+					stderr: res.stderr,
+				},
+				null,
+				2,
+			) + "\n",
+		);
+	} else {
+		console.error(`verify-repo: verify:${tier} failed (${command}) in ${durationMs}ms (exit ${res.status ?? res.signal}). Fix the failure and re-run.`);
+	}
+	process.exitCode = res.status ?? 1;
+} else {
+	const after = computeWorkingTreeHash(repoRoot);
+	if (after.hiddenPaths.length > 0) {
+		fail(
+			`validate post-check tree`,
+			repoRoot,
+			`tracked file(s) hidden by assume-unchanged or skip-worktree (${after.hiddenPaths.slice(0, 5).join(", ")})`,
+			"Clear those git index flags and re-run verify-repo.",
+		);
+	}
+	if (before.treeHash && after.treeHash && before.treeHash !== after.treeHash) {
+		const msg = `working tree changed during verification (before ${before.treeHash.slice(0, 7)}, after ${after.treeHash.slice(0, 7)}); stamp not written`;
+		if (parsed.values.json) {
+			process.stdout.write(
+				JSON.stringify(
+					{
+						ok: false,
+						repoRoot,
+						tier,
+						command,
+						isOverride,
+						durationMs,
+						error: msg,
+						stamp: null,
+					},
+					null,
+					2,
+				) + "\n",
+			);
+		} else {
+			console.error(`verify-repo: stamp failed for ${repoRoot}: ${msg}. Re-run verify-repo on a stable tree.`);
+		}
+		process.exitCode = 1;
+	} else {
+		const stamp = before.treeHash
+			? writeVerifyStamp(repoRoot, tier, command, {
+					isOverride,
+					preSnapshot: { head: before.head, treeHash: before.treeHash, clean: before.clean },
+				})
+			: null;
+		if (parsed.values.json) {
+			process.stdout.write(
+				JSON.stringify(
+					{
+						ok: true,
+						repoRoot,
+						tier,
+						command,
+						isOverride,
+						durationMs,
+						truncated: res.truncated,
+						stamp,
+					},
+					null,
+					2,
+				) + "\n",
+			);
+		} else {
+			const overrideNote = isOverride ? " [diagnostic --cmd override; does not satisfy configured PR gate]" : "";
+			const hashNote = stamp ? `stamped tree ${stamp.treeHash.slice(0, 7)}${stamp.clean ? "" : " (working tree)"}` : "stamp skipped (no commits yet)";
+			console.log(`verify-repo: verify:${tier} passed in ${durationMs}ms (${hashNote})${overrideNote}.`);
+		}
+	}
+}
+}

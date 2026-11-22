@@ -1,0 +1,135 @@
+#!/usr/bin/env node
+// Audits any git repository (or a directory of repos) for dynamic agent readiness and optionally scaffolds missing basics.
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+import { applyRepoFixes, auditRepo } from "../lib/repo-doctor.ts";
+import { resolveRepoRoot } from "../lib/verify-stamp.ts";
+
+const USAGE = `Usage:
+  repo-doctor [path] [--json] [--strict]
+  repo-doctor [path] --fix [--scaffold-agents] [--scaffold-worktree] [--scaffold-ci] [--json]
+  repo-doctor --all <parent-dir> [--json]`;
+
+function fail(operation, target, cause, recovery) {
+	console.error(`repo-doctor: ${operation} failed for ${target}: ${cause}. ${recovery}`);
+	process.exit(1);
+}
+
+let parsed;
+try {
+	parsed = parseArgs({
+		args: process.argv.slice(2),
+		options: {
+			all: { type: "string" },
+			fix: { type: "boolean", default: false },
+			"scaffold-agents": { type: "boolean", default: false },
+			"scaffold-worktree": { type: "boolean", default: false },
+			"scaffold-ci": { type: "boolean", default: false },
+			json: { type: "boolean", default: false },
+			strict: { type: "boolean", default: false },
+			help: { type: "boolean", short: "h", default: false },
+		},
+		allowPositionals: true,
+	});
+} catch (err) {
+	fail("parse arguments", "repo-doctor", err.message, "Run `repo-doctor --help` for valid flags.");
+}
+
+const v = parsed.values;
+if (v.help) {
+	console.log(USAGE);
+	process.exit(0);
+}
+
+function statusIcon(status) {
+	if (status === "pass") return "PASS";
+	if (status === "warn") return "WARN";
+	return "FAIL";
+}
+
+function printReport(report) {
+	const pct = Math.round((report.score / Math.max(1, report.maxScore)) * 100);
+	console.log(`${report.repo} (${report.path}) — ${report.score}/${report.maxScore} (${pct}%)`);
+	for (const check of report.checks) {
+		console.log(`  [${statusIcon(check.status)}] ${check.id}: ${check.summary}`);
+		if (check.details?.length) {
+			for (const detail of check.details) console.log(`         - ${detail}`);
+		}
+		if (check.fixHint && check.status !== "pass") {
+			console.log(`         fix: ${check.fixHint}`);
+		}
+	}
+}
+
+if (v.all) {
+	const parentDir = resolve(v.all);
+	if (!existsSync(parentDir) || !statSync(parentDir).isDirectory()) {
+		fail("scan directory", parentDir, "directory does not exist", "Pass an existing parent directory to --all.");
+	}
+	const repos = [];
+	for (const entry of readdirSync(parentDir).sort()) {
+		const full = join(parentDir, entry);
+		try {
+			if (statSync(full).isDirectory() && existsSync(join(full, ".git"))) {
+				repos.push(full);
+			}
+		} catch {
+			// Skip unreadable entries.
+		}
+	}
+	const reports = repos.map((dir) => auditRepo(dir));
+	if (v.json) {
+		process.stdout.write(JSON.stringify(reports, null, 2) + "\n");
+	} else {
+		console.log(`Audited ${reports.length} git repo(s) in ${parentDir}:\n`);
+		for (const r of reports) {
+			const fails = r.checks.filter((c) => c.status === "fail").map((c) => c.id);
+			const warns = r.checks.filter((c) => c.status === "warn").map((c) => c.id);
+			const tag = fails.length === 0 ? (warns.length === 0 ? "PASS" : "WARN") : "FAIL";
+			const notes = [
+				...(fails.length ? [`fail: ${fails.join(",")}`] : []),
+				...(warns.length ? [`warn: ${warns.join(",")}`] : []),
+			].join(" | ");
+			console.log(`[${tag}] ${r.repo.padEnd(26)} ${String(r.score).padStart(2)}/${String(r.maxScore).padEnd(2)}  ${notes || "all checks passing"}`);
+		}
+	}
+} else {
+	const target = resolve(parsed.positionals[0] ?? process.cwd());
+	if (!existsSync(target)) {
+		fail("open path", target, "path does not exist", "Pass a valid repository directory.");
+	}
+
+	let fixResult = null;
+	if (v.fix) {
+		if (!resolveRepoRoot(target)) {
+			fail("apply fixes", target, "not inside a git repository", "Run `repo-doctor --fix` inside a git checkout.");
+		}
+		try {
+			fixResult = applyRepoFixes(target, {
+				scaffoldAgents: v["scaffold-agents"],
+				scaffoldWorktree: v["scaffold-worktree"],
+				scaffoldCi: v["scaffold-ci"],
+			});
+		} catch (err) {
+			fail("apply fixes", target, err.message, "Fix the error above and retry.");
+		}
+	}
+
+	const report = auditRepo(target);
+	if (v.json) {
+		process.stdout.write(JSON.stringify({ ...(fixResult ? { fixes: fixResult } : {}), report }, null, 2) + "\n");
+	} else {
+		if (fixResult) {
+			for (const item of fixResult.applied) console.log(`FIXED: ${item}`);
+			for (const item of fixResult.skipped) console.log(`SKIP:  ${item}`);
+			if (fixResult.applied.length > 0 || fixResult.skipped.length > 0) console.log("");
+		}
+		printReport(report);
+	}
+
+	const hasWarn = report.checks.some((c) => c.status === "warn");
+	if (!report.ok || (v.strict && hasWarn)) {
+		process.exitCode = 1;
+	}
+}

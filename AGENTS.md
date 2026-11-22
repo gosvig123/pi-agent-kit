@@ -31,7 +31,7 @@ Next: <only when the user must act or choose>
 
 ## Verification
 
-Check with the real system first: run the app and use it, then a one-off script, then the existing tests. Write no new tests unless asked. Before the first try, state `Goal → Check → Pass signal`. Stop on pass, on blocked, or after 5 tries with no new evidence. Ask for all needed inputs (credentials, test data, destructive actions) once.
+Check with the real system first: run the app and use it, then a one-off script, then the existing tests. Write no new tests unless asked. Before the first try, state `Goal → Check → Pass signal`. Stop on pass, on blocked, or after 5 tries with no new evidence. Ask for all needed inputs (credentials, test data, destructive actions) once. When a repo defines `verify:all`, run `verify-repo` to stamp `HEAD` before `pr-publish`.
 
 ## Larger Work
 
@@ -55,4 +55,4 @@ One file, one responsibility. Extract a function only for a real operation or to
 
 ## Project Notes
 
-Keep each app's `AGENTS.md` current with verified, reusable notes (setup, start commands, URLs, how to check key workflows); no secrets, task status, or guesses. After non-trivial work, run the `project-memory` delta check.
+Keep each app's `AGENTS.md` current with verified, reusable notes (setup, start commands, URLs, how to check key workflows); no secrets, task status, or guesses. On first touch in an unfamiliar repo or after non-trivial work, run `repo-doctor` and the `project-memory` delta check.

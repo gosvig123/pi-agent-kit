@@ -2,10 +2,11 @@
 // Deterministic builder/cleaner for /tmp/brief-<slug>/ delegation evidence packs.
 // Writes range.diff, checks.txt, and a structured context.md so children never start with missing files.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { reviewPoolForParent } from "../lib/guards/delegate.ts";
+import { analyzeDiffInvariants, refreshInvariantsSection, renderInvariantsMarkdown } from "../lib/brief-invariants.ts";
 
 const VALID_SLUG = /^[A-Za-z0-9._-]+$/;
 const USAGE = `Usage:
@@ -152,17 +153,16 @@ if (checkSections.length > 0) {
 	writeFileSync(checksPath, "# No --cmd passed to brief-init. Paste real check output here before launching children.\n");
 }
 
+const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).replace(/\r?\n$/, "");
+const invariantAnalysis = v.review ? analyzeDiffInvariants(diff, repoRoot) : null;
+
 const contextPath = join(dir, "context.md");
 if (!existsSync(contextPath) || v.force) {
-	const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
 	const branch = git(["branch", "--show-current"], true)?.trim() || "(detached)";
 	const reviewBlock = v.review
 		? [
 				"",
-				"## Invariants checked before review (mark proof in checks.txt, or N/A with reason)",
-				"- [ ] **Concurrency & stale state:** overlapping refreshes, retries, or out-of-order events cannot overwrite newer state.",
-				"- [ ] **Account & workspace boundary:** sign-out, workspace switch, or removed member cannot leak cached data or queued writes.",
-				"- [ ] **Narrow UI & focus (when UI changes):** 320–440 px layout fits, sticky headers do not cover actions/matches, and polling preserves keyboard focus.",
+				renderInvariantsMarkdown(invariantAnalysis),
 				"",
 				"## Review focus",
 				"- **Matters:** <2–4 concrete risks that would make this change unsafe to ship>",
@@ -195,6 +195,9 @@ if (!existsSync(contextPath) || v.force) {
 		"",
 	].join("\n");
 	writeFileSync(contextPath, context);
+} else if (v.review && invariantAnalysis) {
+	const updated = refreshInvariantsSection(readFileSync(contextPath, "utf8"), renderInvariantsMarkdown(invariantAnalysis));
+	writeFileSync(contextPath, updated);
 }
 
 const reviewTargets = v.review ? reviewPoolForParent(v["parent-model"]) : null;
@@ -207,6 +210,16 @@ console.log(
 			diffBytes: Buffer.byteLength(diff, "utf8"),
 			checks: checksPath,
 			commandsRun: cmds.length,
+			...(invariantAnalysis
+				? {
+						triggeredInvariants: invariantAnalysis.triggered.map((t) => ({
+							id: t.id,
+							title: t.title,
+							source: t.source,
+							matchedFiles: t.matchedFiles,
+						})),
+					}
+				: {}),
 			...(reviewTargets ? { reviewTargets } : {}),
 		},
 		null,

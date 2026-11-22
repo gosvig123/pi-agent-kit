@@ -31,7 +31,7 @@ Build `/tmp/brief-<slug>/` with `brief-init <slug> --base <ref> --cmd "<check>" 
   - Decisions already made, which the child must not reopen.
   - Pass rules, as testable statements.
   - `Not building (scope lock)`: explicit adjacent controls, endpoints, or refactors excluded from this change. Builders must not add unrequested extras; reviewers must not file findings asking for excluded items.
-  - `Invariants checked before review` (for `--review`): prove in `checks.txt` or mark N/A with reason before launching reviewers — (1) concurrency & stale-state overwrites, (2) account & workspace boundaries, (3) 320–440 px UI fit, sticky-header overlap, and keyboard-focus preservation.
+  - `Invariants checked before review` (for `--review`): `brief-init` auto-selects triggered invariants from `range.diff` (concurrency/stale-state, account/workspace boundaries, 320–440 px UI/focus, schema/data safety, plus optional `.agent/invariants.json` repo rules) and marks unmatched built-ins N/A. Prove every triggered item in `checks.txt` or explain N/A before launching reviewers.
   - For a decision that can change the verdict, ask the user before launch. For any other open decision, write the assumption to use.
 - `range.diff`: written by `brief-init` (`git diff <base> <head>`). Must not be empty.
 - `checks.txt`: real output of the tests, build, and repro commands, so children do not rerun them.

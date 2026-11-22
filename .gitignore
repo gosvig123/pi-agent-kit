@@ -1,2 +1,5 @@
 node_modules/
 .DS_Store
+
+# Agent scratch and worktree runtime files
+.briefs/

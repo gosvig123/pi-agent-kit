@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "verify:fast": "for f in bin/brief-init bin/pr-fb bin/pr-publish bin/pr-shots bin/repo-doctor bin/review-finding bin/verify-repo; do node --check \"$f\" || exit 1; done && bash -n bin/pi-sync-providers install.sh",
+    "verify:all": "npm run verify:fast && node --test scripts/verify-all.mjs"
+  },
   "description": "Shared Pi agent setup: global rules, skills, prompts, and extensions, plus an installer for the companion packages.",
   "keywords": [
     "pi-package"

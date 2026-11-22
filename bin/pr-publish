@@ -7,11 +7,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { checkPrBody } from "../lib/pr-body-check.ts";
+import { checkVerifyStamp, resolveRepoRoot } from "../lib/verify-stamp.ts";
 
 const USAGE = `Usage:
-  pr-publish check  --body-file <path> [--base <ref>] [--title <title>] [--allow-no-diagram] [--allow-no-screenshots] [--skip-markdown-api] [--json]
-  pr-publish create --title <title> --body-file <path> [--base <ref>] [--draft] [--allow-no-diagram] [--allow-no-screenshots] [--skip-markdown-api] [--dry-run]
-  pr-publish edit   <pr-number> --body-file <path> [--title <title>] [--ready] [--base <ref>] [--allow-no-diagram] [--allow-no-screenshots] [--skip-markdown-api] [--dry-run]`;
+  pr-publish check  --body-file <path> [--base <ref>] [--title <title>] [--allow-no-diagram] [--allow-no-screenshots] [--allow-unverified] [--skip-markdown-api] [--json]
+  pr-publish create --title <title> --body-file <path> [--base <ref>] [--draft] [--allow-no-diagram] [--allow-no-screenshots] [--allow-unverified] [--skip-markdown-api] [--dry-run]
+  pr-publish edit   <pr-number> --body-file <path> [--title <title>] [--ready] [--base <ref>] [--allow-no-diagram] [--allow-no-screenshots] [--allow-unverified] [--skip-markdown-api] [--dry-run]`;
 
 function fail(operation, target, cause, recovery) {
 	console.error(`pr-publish: ${operation} failed for ${target}: ${cause}. ${recovery}`);
@@ -86,6 +87,7 @@ try {
 			ready: { type: "boolean", default: false },
 			"allow-no-diagram": { type: "boolean", default: false },
 			"allow-no-screenshots": { type: "boolean", default: false },
+			"allow-unverified": { type: "boolean", default: false },
 			"skip-markdown-api": { type: "boolean", default: false },
 			"dry-run": { type: "boolean", default: false },
 			json: { type: "boolean", default: false },
@@ -121,6 +123,37 @@ const result = checkPrBody({
 	allowNoScreenshots: v["allow-no-screenshots"],
 });
 
+const repoRoot = resolveRepoRoot(process.cwd());
+const verifyStatus = repoRoot ? checkVerifyStamp(repoRoot, "all") : null;
+const draftReasons = [];
+if (result.forceDraft && result.warnings.length > 0) {
+	draftReasons.push(result.warnings[0]);
+}
+if (verifyStatus && verifyStatus.configured && !verifyStatus.valid && !v["allow-unverified"]) {
+	const msg = `${verifyStatus.reason} Run \`verify-repo\` before marking ready (or pass --allow-unverified).`;
+	result.warnings.push(msg);
+	draftReasons.push(msg);
+	result.forceDraft = true;
+} else if (verifyStatus && !verifyStatus.configured) {
+	result.warnings.push("No verify:all command configured in this repo (run `repo-doctor` to add one).");
+}
+if (cmd === "edit" && v.ready && !v["dry-run"] && verifyStatus?.configured && verifyStatus.valid && !v["allow-unverified"]) {
+	const prHead = run("gh", ["pr", "view", String(prNum), "--json", "headRefOid", "--jq", ".headRefOid"]);
+	const remoteSha = prHead.status === 0 ? prHead.stdout.trim() : "";
+	if (prHead.status !== 0 || !/^[0-9a-f]{40,64}$/i.test(remoteSha)) {
+		const errDetail = (prHead.stderr || prHead.stdout || `exit ${prHead.status}`).trim();
+		const msg = `Could not verify PR #${prNum} remote head SHA (${errDetail || "empty response"}). Re-run when GitHub is reachable or pass --allow-unverified.`;
+		result.warnings.push(msg);
+		draftReasons.push(msg);
+		result.forceDraft = true;
+	} else if (verifyStatus.head && remoteSha !== verifyStatus.head) {
+		const msg = `PR #${prNum} head (${remoteSha.slice(0, 7)}) differs from verified local HEAD (${verifyStatus.head.slice(0, 7)}). Push or check out the PR head and run \`verify-repo\`.`;
+		result.warnings.push(msg);
+		draftReasons.push(msg);
+		result.forceDraft = true;
+	}
+}
+
 if (result.ok && result.mermaidBlocks.length > 0 && !v["skip-markdown-api"]) {
 	const mdErr = validateGitHubMarkdown(body);
 	if (mdErr) {
@@ -131,12 +164,13 @@ if (result.ok && result.mermaidBlocks.length > 0 && !v["skip-markdown-api"]) {
 
 if (cmd === "check") {
 	if (v.json) {
-		console.log(JSON.stringify(result, null, 2));
+		console.log(JSON.stringify({ ...result, draftReasons, verifyStatus }, null, 2));
 	} else {
 		for (const e of result.errors) console.error(`ERROR: ${e}`);
 		for (const w of result.warnings) console.warn(`WARN: ${w}`);
 		if (result.ok) {
-			console.log(`OK: ${result.mermaidBlocks.length} mermaid block(s), ${result.uiFiles.length} UI file(s), forceDraft=${result.forceDraft}, linearKeys=[${result.linearKeys.join(", ")}]`);
+			const verifyTag = verifyStatus?.configured ? (verifyStatus.valid ? "verified" : "unverified") : "unconfigured";
+			console.log(`OK: ${result.mermaidBlocks.length} mermaid block(s), ${result.uiFiles.length} UI file(s), verify=${verifyTag}, forceDraft=${result.forceDraft}, linearKeys=[${result.linearKeys.join(", ")}]`);
 			if (result.usesClassDef) console.log("NOTE: Diagram uses classDef — verify light/dark legibility in a browser.");
 		}
 	}
@@ -152,13 +186,13 @@ if (cmd === "create") {
 	if (!v.title) fail("validate input", "--title", "missing PR title", "Pass --title <title>.");
 	const isDraft = v.draft || result.forceDraft;
 	if (result.forceDraft && !v.draft) {
-		console.warn(`WARN: ${result.warnings[0]} Forcing --draft.`);
+		console.warn(`WARN: ${draftReasons.join(" ")} Forcing --draft.`);
 	}
 	const ghArgs = ["pr", "create", "--title", v.title, "--body-file", bodyFile];
 	if (v.base) ghArgs.push("--base", v.base.replace(/^origin\//, ""));
 	if (isDraft) ghArgs.push("--draft");
 	if (v["dry-run"]) {
-		console.log(JSON.stringify({ dryRun: true, command: ["gh", ...ghArgs], isDraft, linearKeys: result.linearKeys, warnings: result.warnings }, null, 2));
+		console.log(JSON.stringify({ dryRun: true, command: ["gh", ...ghArgs], isDraft, draftReasons, verifyStatus, linearKeys: result.linearKeys, warnings: result.warnings }, null, 2));
 		process.exit(0);
 	}
 	const created = run("gh", ghArgs);
@@ -166,10 +200,10 @@ if (cmd === "create") {
 		fail("create PR", v.title, (created.stderr || created.stdout || `exit ${created.status}`).trim(), "Fix the gh error and retry.");
 	}
 	const url = created.stdout.trim();
-	console.log(JSON.stringify({ url, draft: isDraft, linearKeys: result.linearKeys, usesClassDef: result.usesClassDef, warnings: result.warnings }, null, 2));
+	console.log(JSON.stringify({ url, draft: isDraft, draftReasons, verifyStatus, linearKeys: result.linearKeys, usesClassDef: result.usesClassDef, warnings: result.warnings }, null, 2));
 } else if (cmd === "edit") {
 	if (v.ready && result.forceDraft) {
-		fail("mark PR ready", `PR #${prNum}`, result.warnings[0], "Capture and embed before/after screenshots via `pr-shots publish` before passing --ready.");
+		fail("mark PR ready", `PR #${prNum}`, draftReasons.join(" "), "Fix the gate(s) above (run `verify-repo` and/or add screenshots via `pr-shots publish`) before passing --ready.");
 	}
 	const ghArgs = ["pr", "edit", prNum, "--body-file", bodyFile];
 	if (v.title) ghArgs.push("--title", v.title);
