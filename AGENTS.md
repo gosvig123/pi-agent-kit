@@ -35,9 +35,9 @@ Check with the real system first: run the app and use it, then a one-off script,
 
 ## Larger Work
 
-Large means more than one component, more than ~5 file edits, or an unclear end. First show a plan (done signal, out of scope, 2–5 slices, budget) and get approval once; a request that gives scope and a done signal is the plan. After each slice: `✅ Slice n/N — <evidence> — next: <slice>`. Then follow the `delegation` skill (review loop). Stop and report on done, blocked, budget, or drift (out-of-scope change, new dependency, schema or public API change, destructive action).
+Large means more than one component, more than ~5 file edits, or an unclear end. First show a plan (done signal, out of scope, 2–5 slices, budget) and get approval once; a request that gives scope and a done signal is the plan. After each slice: `✅ Slice n/N — <evidence> — next: <slice>`. Then score the review gate (`brief-init gate`, `delegation` skill) and review only as much as it says. A small change gets the gate too when it touches auth, privacy, money, data or schema, or concurrency, or cannot be undone. Run the gate and its review before you report the work done, not when the user asks to publish; the report states `Review gate: <level>, score <n>`. Stop and report on done, blocked, budget, or drift (out-of-scope change, new dependency, schema or public API change, destructive action).
 
-After you open or push to a PR, follow `/pr-feedback`. Write every PR body with `work-items`. A PR that changes what users see needs before and after screenshots in its body.
+After you open or push to a PR, run `/pr-feedback` for review comments and watch the checks; a local review loop replaces neither. Write every PR body with `work-items`. A PR that changes what users see needs before and after screenshots in its body.
 
 ## Code
 
@@ -48,7 +48,7 @@ One file, one responsibility. Extract a function only for a real operation or to
 - Child agents: `delegate_task` only, never Pi `subagent` tools or a native `Agent`. Brief them with the `delegation` skill. In a child, `extensions/child-mode.ts` adds rules that win over this file (no `ctx_resume`, plan approval, review loop, child agents, or memory check unless the brief asks; a fixed reply shape).
 - Any launched browser (headless too), app runs you look at, UI tests, screenshots, recordings, and computer use run on the MacBook Air, not this MacBook Pro: the `air` skill. If the Air does not answer, ask before you use the Pro.
 - Signed-in sites: the `accounts` skill, through `air browser`. External apps (Gmail, Slack, Linear, HubSpot): `executor_*`.
-- `/pr-feedback` and other prompts: read `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md`. `fd` and `rg` skip that git-ignored kit; use `fd -u` or `rg -u`.
+- `/pr-feedback` and other prompts: read `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md`. Plain words count as the command: "commit and push" → `commit-push.md`; "commit locally", "commit only", or "don't push" → `commit-only.md`; "push only" → `push-only.md`. `fd` and `rg` skip that git-ignored kit; use `fd -u` or `rg -u`.
 - Wait on conditions (`gh pr checks --watch`, `until …; do sleep 10; done`), not fixed sleeps.
 - Give a command that can open a macOS prompt a 10–30 s timeout, and ask the user to approve the prompt.
 - In T3 Code, never set `multiSelect: true` in `ask_user_question`.

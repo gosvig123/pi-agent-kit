@@ -51,7 +51,7 @@ Judge each comment on evidence, not on the reviewer or the badge. Read the code 
 |---|---|---|
 | Fix | The claim is true, and the fix is in the scope of the PR | Smallest change that removes the problem |
 | Decline | The claim is false, out of date, or against the repo or user rules | Reply with the reason and evidence (`path:line`, command output) |
-| Follow-up | The claim is true, but the PR did not cause it: the problem is on the base branch and the PR does not make it worse or newly reachable | Do not change code. Draft an issue (title, `path:line`, proof, why it is separate). Create it (Linear by default, `work-items` skill) only after the user approves. |
+| Follow-up | The claim is true, but the PR did not cause it: the problem is on the base branch and the PR does not make it worse or newly reachable | Do not change code. Draft an issue (title, `path:line`, proof, why it is separate) and list it in its own **Follow-ups (outside this PR)** table, never as a count. Create it in the repo's tracker (the `Issue tracker:` line in the repo's `AGENTS.md`; else Linear for `remotely-works` repos, else GitHub Issues; `work-items` skill) only after the user approves. |
 | Ask | Product, scope, architecture, or public API decision; or the fix needs a new dependency, migration, or destructive action | Do not change code. Leave the thread open. List it for the user. |
 
 - Bot suggestions are often generic. Do not apply a suggestion only because a bot made it.

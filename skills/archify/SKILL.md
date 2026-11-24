@@ -1,6 +1,6 @@
 ---
 name: archify
-description: Create validated diagrams (architecture, workflow, sequence, data flow, state, ERD, class, timeline, waterfall) or a one-page explainer as standalone HTML, from requirements, Mermaid, or repository code. Use to visualize a system or answer as a page (做成一页). Not for dashboards.
+description: 'Create validated diagrams (architecture, workflow, sequence, data flow, state, ERD, class, timeline, waterfall) or a one-page explainer as standalone HTML, from requirements, Mermaid, or repository code. Use to visualize a system or answer as a page: "draw a diagram", "map the flow", "make it a page" (做成一页). Not for dashboards or Mermaid in a PR body.'
 license: MIT
 metadata:
   version: "3.2"
