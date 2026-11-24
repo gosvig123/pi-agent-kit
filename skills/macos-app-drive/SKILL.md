@@ -8,6 +8,9 @@ description: Drive and check native macOS app UI (SwiftUI, AppKit, Electron, men
 Drive the real app, read the result, and show a window screenshot as evidence.
 Scripts are in `scripts/`; run them with paths relative to this skill directory.
 
+Run the app on the MacBook Air, not on the user's MacBook Pro (the `air` skill): `air push <App>.app` or `air run --sync -- <build>`, then
+`air ax <Process> ...` for the steps below and `air shot <Owner>` for proof. Use this Mac only when the user asks for it.
+
 ## Loop
 
 1. **Run the right build.** After a rebuild, quit the old process and open the new `.app`.

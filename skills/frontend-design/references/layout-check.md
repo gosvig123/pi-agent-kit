@@ -8,7 +8,7 @@ Goal → no element runs past its parent's content box. Check → `scripts/layou
 
 ## Steps
 
-1. Run the app and sign in as the project's agent account (see the project's `AGENTS.md`).
+1. Run the app on the MacBook Air and open its browser there (the `air` skill: `air run --bg`, `air browser clean`; every `agent_browser` call attaches with `--cdp` or the returned session). Sign in as the project's agent account (see the project's `AGENTS.md`).
 2. List the screens: every top-level route, plus states that change layout (tabs, view switches such as List and Cards, open popovers and dialogs, empty and long data).
 3. For each screen, run one `agent_browser` `batch --bail`:
    - `open <url>`, then `wait --fn` for a selector that shows content has loaded (not `--load networkidle`: dev servers keep a socket open, so it times out).

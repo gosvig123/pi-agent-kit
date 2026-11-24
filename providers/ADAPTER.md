@@ -10,7 +10,7 @@ The rules above and the shared skills were written for Pi. When you are not Pi, 
 | `ask_user_question` | Your own question tool (Claude `AskUserQuestion`). Otherwise ask in chat with 2–4 options. |
 | `executor_search`, `executor_describe`, `executor_call`, `executor_execute` | The `executor` MCP server tools (`search`, `describe`, `call`, `execute`). |
 | `better_web_search` | Your own web search and fetch tools. |
-| `load_toolset browser`, `agent_browser` | The `agent-browser` CLI, or your own browser tools. |
+| `load_toolset browser`, `agent_browser` | The `agent-browser` CLI with `--cdp <port>` from `air browser` (the `air` skill). Never a browser or computer-use tool on this Mac. |
 | `review_findings`, `report_finding` | Use the `review-finding` CLI on PATH (`review-finding add --brief <slug> ...` and `review-finding merge <slug>`); it shares `~/.pi/agent/review-findings` with Pi. |
 | `ctx_resume`, `session_lookup` | Not available. Skip them. |
 
