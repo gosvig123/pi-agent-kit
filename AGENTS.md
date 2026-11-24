@@ -47,6 +47,7 @@ One file, one responsibility. Extract a function only for a real operation or to
 
 - Child agents: `delegate_task` only, never Pi `subagent` tools or a native `Agent`. Brief them with the `delegation` skill. In a child, `extensions/child-mode.ts` adds rules that win over this file (no `ctx_resume`, plan approval, review loop, child agents, or memory check unless the brief asks; a fixed reply shape).
 - Any launched browser (headless too), app runs you look at, UI tests, screenshots, recordings, and computer use run on the MacBook Air, not this MacBook Pro: the `air` skill. If the Air does not answer, ask before you use the Pro.
+- Never print a secret. Do not trace (`set -x`, `bash -x`, `zsh -x`) or dump (`env`, `printenv`, `security … -w`) a shell or keychain item; check a secret by its length or hash. Keep secrets out of `~/.zshenv`: every zsh loads it.
 - Signed-in sites: the `accounts` skill, through `air browser`. External apps (Gmail, Slack, Linear, HubSpot): `executor_*`.
 - `/pr-feedback` and other prompts: read `~/.pi/agent/local/pi-agent-kit/prompts/<name>.md`. Plain words count as the command: "commit and push" → `commit-push.md`; "commit locally", "commit only", or "don't push" → `commit-only.md`; "push only" → `push-only.md`. `fd` and `rg` skip that git-ignored kit; use `fd -u` or `rg -u`.
 - Wait on conditions (`gh pr checks --watch`, `until …; do sleep 10; done`), not fixed sleeps.
