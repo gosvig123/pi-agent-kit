@@ -24,7 +24,7 @@ export default function reviewFindings(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "review_findings",
 		label: "Review findings",
-		description: "Read the findings that review children reported with report_finding for one brief, merged by file and nearby line, highest severity first, split into findings the change caused (fix) and findings it did not cause (issue drafts).",
+		description: "Read the findings that review children reported with report_finding for one brief, merged by file and nearby line, highest severity first, split into findings the change caused (fix, each with an ID for `review-finding verdict` and a convergence check against the previous round) and the pre-existing ledger: every `existing` finding of all rounds of the review group (<slug> and <slug>-r<N>), each with a stable ID and triage status.",
 		promptSnippet: "Read merged findings from review children for one /tmp/brief-<slug>",
 		promptGuidelines: ["Use review_findings after the reviewers of a round reply, with the slug of their /tmp/brief-<slug> folder, before you fix findings."],
 		parameters: Type.Object({
@@ -48,7 +48,7 @@ export default function reviewFindings(pi: ExtensionAPI) {
 		defaultActive: false,
 		parameters: Type.Object({
 			severity: StringEnum(SEVERITIES),
-			origin: StringEnum(ORIGINS, { description: "diff: the change caused it, made it worse, or made it reachable (default: fix). existing: on the base branch and not affected by the change (default: issue draft)." }),
+			origin: StringEnum(ORIGINS, { description: "diff: the change caused it, made it worse, or made it reachable (default: fix). existing: on the base branch and not affected by the change (default: triage gate)." }),
 			file: Type.String({ description: "Repository-relative path." }),
 			line: Type.Optional(Type.Number()),
 			title: Type.String({ description: "The problem in one line." }),

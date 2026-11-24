@@ -3,18 +3,35 @@
 // Lets Claude Code, Codex, and Antigravity record and merge review findings alongside Pi.
 import { parseArgs } from "node:util";
 import {
+	DECISIONS,
 	ORIGINS,
+	VERDICTS,
 	SEVERITIES,
 	appendFinding,
+	existingLedger,
+	groupOf,
 	mergeFindings,
 	readFindings,
+	recordTriage,
 	renderFindingsReport,
+	recordVerdict,
+	renderLedger,
 } from "../lib/review-findings-store.ts";
+import { collectStats, renderStats } from "../lib/review-stats.ts";
 
 const USAGE = `Usage:
   review-finding add --brief <slug> --severity P0|P1|P2 --origin diff|existing \\
     --file <path> [--line <n>] --title <text> --proof <text> [--fix <text>] [--angle <name>] [--reviewer <id>]
-  review-finding merge <slug> [--since <iso>] [--json]`;
+  review-finding merge <slug> [--since <iso>] [--json]
+  review-finding existing <group|slug> [--json] [--check]
+  review-finding triage <group|slug> <id> fix-here|split-pr|file|drop [--note <text>]
+  review-finding verdict <slug> <id> block|cheap-fix|noise [--note <text>]
+  review-finding stats [--json]
+
+A review group is a slug plus its later rounds, named <slug>-r<N>. "existing" lists the
+pre-existing findings of all rounds with their triage status; --check exits 2 while any is untriaged.
+"verdict" records the parent's call on a diff finding of one round (IDs from "merge"); "stats" shows
+review yield by gate level and angle, to calibrate \`brief-init gate\`.`;
 
 function fail(operation, target, cause, recovery) {
 	console.error(`review-finding: ${operation} failed for ${target}: ${cause}. ${recovery}`);
@@ -112,6 +129,83 @@ if (cmd === "add") {
 	} catch (err) {
 		fail("read findings", slug, err.message, "Check the brief slug and retry.");
 	}
+} else if (cmd === "existing") {
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args: rest,
+			options: { json: { type: "boolean", default: false }, check: { type: "boolean", default: false } },
+			allowPositionals: true,
+		});
+	} catch (err) {
+		fail("parse arguments", "existing", err.message, "Run `review-finding --help` for valid flags.");
+	}
+	const target = parsed.positionals[0];
+	if (!target) fail("validate input", "group", "missing review group", "Pass `review-finding existing <group>`.");
+	let rows;
+	try {
+		rows = existingLedger(target);
+	} catch (err) {
+		fail("read pre-existing findings", target, err.message, "Check the group name and retry.");
+	}
+	console.log(parsed.values.json ? JSON.stringify({ group: groupOf(target), rows }, null, 2) : renderLedger(target, rows).join("\n"));
+	if (parsed.values.check && rows.some((r) => r.status === "untriaged")) process.exit(2);
+} else if (cmd === "triage") {
+	let parsed;
+	try {
+		parsed = parseArgs({ args: rest, options: { note: { type: "string" } }, allowPositionals: true });
+	} catch (err) {
+		fail("parse arguments", "triage", err.message, "Run `review-finding --help` for valid flags.");
+	}
+	const [target, id, decision] = parsed.positionals;
+	const note = parsed.values.note;
+	if (!target || !id || !decision) fail("validate input", "triage", "missing group, ID, or decision", "Pass `review-finding triage <group> <id> <decision>`.");
+	if (!DECISIONS.includes(decision)) fail("validate decision", decision, `must be one of ${DECISIONS.join(", ")}`, "Pick one decision.");
+	if (decision === "file" && !note) fail("validate note", id, "file needs the issue URL", "Create the issue after the user approves, then pass --note <url>.");
+	if (decision === "drop" && !note) fail("validate note", id, "drop needs a reason", "Pass --note <reason>.");
+	try {
+		recordTriage(target, {
+			time: new Date().toISOString(),
+			id,
+			decision,
+			...(note ? { note } : {}),
+			by: process.env.T3_THREAD_ID || process.env.PI_SESSION_ID || "cli",
+		});
+	} catch (err) {
+		fail("record triage", `${target}/${id}`, err.message, "Use an ID from `review-finding existing <group>`.");
+	}
+	console.log(`Recorded ${decision} for ${id} in group "${groupOf(target)}".`);
+} else if (cmd === "verdict") {
+	let parsed;
+	try {
+		parsed = parseArgs({ args: rest, options: { note: { type: "string" } }, allowPositionals: true });
+	} catch (err) {
+		fail("parse arguments", "verdict", err.message, "Run `review-finding --help` for valid flags.");
+	}
+	const [slug, id, verdict] = parsed.positionals;
+	const note = parsed.values.note;
+	if (!slug || !id || !verdict) fail("validate input", "verdict", "missing slug, ID, or verdict", "Pass `review-finding verdict <slug> <id> <verdict>`.");
+	if (!VERDICTS.includes(verdict)) fail("validate verdict", verdict, `must be one of ${VERDICTS.join(", ")}`, "Pick one verdict.");
+	if (verdict === "noise" && !note) fail("validate note", id, "noise needs a reason", "Pass --note <why the claim is false or out of scope>.");
+	try {
+		recordVerdict(slug, {
+			time: new Date().toISOString(),
+			id,
+			verdict,
+			...(note ? { note } : {}),
+			by: process.env.T3_THREAD_ID || process.env.PI_SESSION_ID || "cli",
+		});
+	} catch (err) {
+		fail("record verdict", `${slug}/${id}`, err.message, "Use an ID from the Fix table of `review-finding merge <slug>`.");
+	}
+	console.log(`Recorded ${verdict} for ${id} in round "${slug}".`);
+} else if (cmd === "stats") {
+	const json = rest.includes("--json");
+	try {
+		console.log(json ? JSON.stringify(collectStats(), null, 2) : renderStats());
+	} catch (err) {
+		fail("compute review stats", "review-findings store", err.message, "Check the store directory and retry.");
+	}
 } else {
-	fail("dispatch command", cmd, "unknown subcommand", "Use `add` or `merge`.");
+	fail("dispatch command", cmd, "unknown subcommand", "Use `add`, `merge`, `existing`, `triage`, `verdict`, or `stats`.");
 }

@@ -7,14 +7,21 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { reviewPoolForParent } from "../lib/guards/delegate.ts";
 import { analyzeDiffInvariants, refreshInvariantsSection, renderInvariantsMarkdown } from "../lib/brief-invariants.ts";
+import { AXES, SCALE, decide, readGates, recordGate, refreshGateSection, renderGateMarkdown, suggestProof, suggestRisk, suggestSize } from "../lib/review-gate.ts";
 
 const VALID_SLUG = /^[A-Za-z0-9._-]+$/;
 const USAGE = `Usage:
   brief-init <slug> [--base <ref>] [--head <ref>] [--cmd "<check>"]...
                     [--goal "<text>"] [--pass "<text>"] [--out-of-scope "<text>"]
                     [--review [--parent-model <model>]] [--local] [--allow-empty] [--force]
+  brief-init gate <slug> --novelty <0-3> --reversibility <0-3> [--proof <0-3>] [--risk <0-3>] [--size <0-3>]
+                    --reason "<axis>: <why>"... [--base <ref>] [--head <ref>] [--local] [--dry-run]
   brief-init review-targets [--parent-model <model>]
-  brief-init clean <slug> [--local]`;
+  brief-init clean <slug> [--local]
+
+gate decides skip, light, or full review: impact max(risk, reversibility) times likelihood
+round(0.25 size + 0.35 novelty + 0.4 proof gap). It suggests risk, size, and proof from the diff
+and the brief's checks.txt; a score below a suggestion needs a --reason for that axis.`;
 
 function fail(operation, target, cause, recovery) {
 	console.error(`brief-init: ${operation} failed for ${target}: ${cause}. ${recovery}`);
@@ -71,6 +78,84 @@ if (raw[0] === "review-targets") {
 	}
 	const parentModel = sub.values["parent-model"] || sub.positionals[0] || "";
 	console.log(JSON.stringify({ parentModel: parentModel || null, targets: reviewPoolForParent(parentModel) }, null, 2));
+	process.exit(0);
+}
+
+if (raw[0] === "gate") {
+	let sub;
+	try {
+		sub = parseArgs({
+			args: raw.slice(1),
+			options: {
+				...Object.fromEntries(AXES.map((axis) => [axis, { type: "string" }])),
+				reason: { type: "string", multiple: true },
+				base: { type: "string" },
+				head: { type: "string" },
+				local: { type: "boolean", default: false },
+				"dry-run": { type: "boolean", default: false },
+			},
+			allowPositionals: true,
+		});
+	} catch (err) {
+		fail("parse arguments", "gate", err.message, "Run `brief-init --help` for the gate flags.");
+	}
+	const g = sub.values;
+	const gateSlug = validateSlug(sub.positionals[0]);
+	const gateDir = resolveBriefDir(gateSlug, g.local);
+	const read = (path) => (existsSync(path) ? readFileSync(path, "utf8") : null);
+	const briefDiff = g.base || g.head ? null : read(join(gateDir, "range.diff"));
+	const gateBase = g.base || detectBase();
+	const gateDiff = briefDiff ?? git(g.head ? ["diff", gateBase, g.head] : ["diff", gateBase]);
+	if (!gateDiff.trim()) fail("score review gate", gateSlug, "diff is empty", "Pass --base <ref> for the change, or build the brief first.");
+	const gateRoot = git(["rev-parse", "--show-toplevel"]).trim();
+
+	const reasons = {};
+	for (const entry of g.reason ?? []) {
+		const m = /^(\w+):\s*(.+)$/s.exec(entry);
+		if (!m || !AXES.includes(m[1])) fail("parse reason", entry, `must be "<axis>: <why>" with axis one of ${AXES.join(", ")}`, 'Pass --reason "novelty: new sync flow".');
+		reasons[m[1]] = m[2].trim();
+	}
+	const risk = suggestRisk(gateDiff, analyzeDiffInvariants(gateDiff, gateRoot));
+	const size = suggestSize(gateDiff);
+	const proof = suggestProof(read(join(gateDir, "checks.txt")));
+	const suggested = { risk: risk.score, size: size.score, ...(proof ? { proof: proof.score } : {}) };
+	const autoReason = { risk: risk.reason, size: size.reason, ...(proof ? { proof: proof.reason } : {}) };
+
+	const scores = {};
+	const missing = [];
+	for (const axis of AXES) {
+		const given = g[axis];
+		if (given === undefined) {
+			if (suggested[axis] === undefined) missing.push(axis);
+			else scores[axis] = suggested[axis];
+			continue;
+		}
+		const n = Number(given);
+		if (!Number.isInteger(n) || n < 0 || n > 3) fail("validate score", `--${axis} ${given}`, "must be an integer from 0 to 3", `Scale: ${SCALE[axis].map((t, i) => `${i} ${t}`).join("; ")}.`);
+		if (suggested[axis] !== undefined && n < suggested[axis] && !reasons[axis]) {
+			fail("lower suggested score", axis, `you set ${n} below the suggested ${suggested[axis]} (${autoReason[axis]}) with no reason`, `Pass --reason "${axis}: <why>" or drop --${axis}.`);
+		}
+		scores[axis] = n;
+	}
+	for (const axis of AXES) if (g[axis] !== undefined && suggested[axis] === undefined && !reasons[axis]) missing.push(`reason for ${axis}`);
+	if (missing.length) {
+		const help = missing
+			.filter((m) => AXES.includes(m))
+			.map((axis) => `  --${axis}: ${SCALE[axis].map((t, i) => `${i} ${t}`).join("; ")}`);
+		fail("score review gate", gateSlug, `missing ${missing.join(", ")}`, [`Pass each with a --reason "<axis>: <why>". Suggested so far: ${JSON.stringify(suggested)}.`, ...help].join("\n"));
+	}
+	const allReasons = { ...autoReason, ...reasons };
+	const gate = decide(scores, [risk.reason]);
+	const section = renderGateMarkdown(gate, allReasons);
+	let recorded = null;
+	if (!g["dry-run"]) {
+		recorded = recordGate({ time: new Date().toISOString(), slug: gateSlug, repo: gateRoot, base: gateBase, head: g.head ?? null, suggested, reasons: allReasons, ...gate });
+		const contextFile = join(gateDir, "context.md");
+		const context = read(contextFile);
+		if (context !== null) writeFileSync(contextFile, refreshGateSection(context, section));
+	}
+	console.log(section);
+	console.log(`\n${recorded ? `Recorded in ${recorded}.` : "Dry run: not recorded."}${gate.level === "skip" ? "" : ` Next: brief-init ${gateSlug} --base ${gateBase} --review, then follow the delegation skill.`}`);
 	process.exit(0);
 }
 
@@ -200,6 +285,10 @@ if (!existsSync(contextPath) || v.force) {
 	writeFileSync(contextPath, updated);
 }
 
+// Carry the latest review gate for this slug into the brief, so reviewers see the scores and angles.
+const lastGate = v.review ? readGates().filter((r) => r.slug === slug).at(-1) : undefined;
+if (lastGate) writeFileSync(contextPath, refreshGateSection(readFileSync(contextPath, "utf8"), renderGateMarkdown(lastGate, lastGate.reasons)));
+
 const reviewTargets = v.review ? reviewPoolForParent(v["parent-model"]) : null;
 console.log(
 	JSON.stringify(
@@ -221,6 +310,7 @@ console.log(
 					}
 				: {}),
 			...(reviewTargets ? { reviewTargets } : {}),
+			...(v.review ? { reviewGate: lastGate ? `${lastGate.level} (score ${lastGate.score})` : `none: run \`brief-init gate ${slug}\` first` } : {}),
 		},
 		null,
 		2,
