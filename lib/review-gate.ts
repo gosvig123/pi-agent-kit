@@ -1,6 +1,7 @@
 // Review gate: decides skip, light, or full review for a change from five 0–3 scores.
 // Impact = max(risk, reversibility). Likelihood = round(0.25·size + 0.35·novelty + 0.4·proof gap).
 // Score = Impact × Likelihood (0–9): 0–2 skip, 3–4 light (1 reviewer), 6–9 full (2–3 reviewers).
+// Floor: code with impact ≥1 and size ≥1 (over 50 changed lines, or more than 1 file) gets at least light.
 // `brief-init gate` suggests risk, size, and proof from the diff and checks.txt; the agent sets
 // novelty and reversibility, and must give a reason to score below a suggestion.
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
@@ -107,7 +108,8 @@ export function decide(scores: Scores, riskReasons: string[] = []): Gate {
 	const impact = Math.max(scores.risk, scores.reversibility);
 	const likelihood = Math.round(WEIGHTS.size * scores.size + WEIGHTS.novelty * scores.novelty + WEIGHTS.proof * scores.proof);
 	const score = impact * likelihood;
-	const level: Level = score <= 2 ? "skip" : score <= 4 ? "light" : "full";
+	const floor = impact >= 1 && scores.size >= 1;
+	const level: Level = score <= 2 ? (floor ? "light" : "skip") : score <= 4 ? "light" : "full";
 	return { scores, impact, likelihood, score, level, reviewers: { skip: "0", light: "1", full: "2–3" }[level], angles: anglesFor(level, scores, riskReasons) };
 }
 

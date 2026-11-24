@@ -57,7 +57,7 @@ Score the change before any review round. Run `brief-init gate <slug> --base <re
 | proof (gap) | the goal ran end to end | nothing ran, or a check failed |
 
 Impact = max(risk, reversibility). Likelihood = round(0.25·size + 0.35·novelty + 0.4·proof). Score = impact × likelihood:
-- **0–2 skip:** no reviewers. Report the proof.
+- **0–2 skip:** no reviewers. Report the proof. Floor: code with impact ≥1 and size ≥1 (over 50 changed lines, or more than 1 file) gets at least light.
 - **3–4 light:** 1 reviewer, the angle the gate prints.
 - **6–9 full:** 2–3 reviewers, the angles the gate prints.
 
